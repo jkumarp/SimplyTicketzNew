@@ -37,3 +37,55 @@ export const uploadDocument = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
+export const getSignedUrl = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { path } = req.query;
+    if (!path || typeof path !== 'string') {
+      res.status(400).json({ error: 'File path is required' });
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from('merchant-docs')
+      .createSignedUrl(path, 3600); // URL valid for 1 hour
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: data.signedUrl
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+export const deleteDocument = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { path } = req.body;
+    if (!path) {
+      res.status(400).json({ error: 'File path is required' });
+      return;
+    }
+
+    const { error } = await supabase.storage
+      .from('merchant-docs')
+      .remove([path]);
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'File deleted successfully'
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
