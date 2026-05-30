@@ -1,22 +1,23 @@
 "use client";
 
 import React from 'react';
-import { Search, Ticket, User, Menu } from 'lucide-react';
+import { Search, Ticket, User, Menu, Users as UsersIcon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Link } from 'react-router-dom';
 
 const Navbar = () => {
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4 md:px-8">
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <div className="bg-indigo-600 p-1.5 rounded-lg">
             <Ticket className="h-6 w-6 text-white" />
           </div>
           <span className="text-xl font-bold tracking-tight text-indigo-600 hidden sm:inline-block">
             SimplyTicketz
           </span>
-        </div>
+        </Link>
 
         <div className="hidden md:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">
@@ -32,9 +33,12 @@ const Navbar = () => {
           <Button variant="ghost" size="icon" className="md:hidden">
             <Search className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" className="hidden sm:flex font-medium">
-            List Your Event
-          </Button>
+          <Link to="/users">
+            <Button variant="ghost" className="hidden sm:flex font-medium gap-2">
+              <UsersIcon className="h-4 w-4" />
+              Users
+            </Button>
+          </Link>
           <Button variant="outline" size="icon" className="rounded-full">
             <User className="h-5 w-5" />
           </Button>
