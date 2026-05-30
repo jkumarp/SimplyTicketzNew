@@ -10,11 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
 import { 
   Store, Loader2, Mail, Phone, MapPin, FileText, 
   ShieldCheck, Building2, Upload, CheckCircle2, 
-  User, CreditCard, Fingerprint, ClipboardCheck 
+  CreditCard, ClipboardCheck 
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -48,11 +55,21 @@ const Merchants = () => {
     update_by: '1'
   });
 
-  const { data: merchants, isLoading } = useQuery({
+  const { data: merchants, isLoading: isLoadingMerchants } = useQuery({
     queryKey: ['merchants'],
     queryFn: async () => {
       const res = await fetch(`${API_URL}/merchants`);
       if (!res.ok) throw new Error('Failed to fetch merchants');
+      const json = await res.json();
+      return json.data;
+    }
+  });
+
+  const { data: countries, isLoading: isLoadingCountries } = useQuery({
+    queryKey: ['countries'],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/countries`);
+      if (!res.ok) throw new Error('Failed to fetch countries');
       const json = await res.json();
       return json.data;
     }
@@ -299,12 +316,22 @@ const Merchants = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Country ID</Label>
-                          <Input 
-                            type="number"
-                            value={formData.country}
-                            onChange={(e) => setFormData({...formData, country: e.target.value})}
-                          />
+                          <Label>Country *</Label>
+                          <Select 
+                            value={formData.country} 
+                            onValueChange={(value) => setFormData({...formData, country: value})}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder={isLoadingCountries ? "Loading..." : "Select Country"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {countries?.map((country: any) => (
+                                <SelectItem key={country.id} value={country.id.toString()}>
+                                  {country.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </div>
@@ -398,7 +425,6 @@ const Merchants = () => {
                 </CardContent>
               </Card>
 
-              {/* Moved Button Here */}
               <Button 
                 form="merchant-form"
                 type="submit" 
@@ -439,7 +465,7 @@ const Merchants = () => {
               <CardTitle>Merchant Directory</CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {isLoadingMerchants ? (
                 <div className="flex justify-center py-20">
                   <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
                 </div>
