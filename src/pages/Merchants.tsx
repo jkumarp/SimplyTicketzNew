@@ -170,7 +170,7 @@ const Merchants = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-8">
-                <form onSubmit={handleSubmit} className="space-y-8">
+                <form id="merchant-form" onSubmit={handleSubmit} className="space-y-8">
                   {/* Section 1: Basic & Contact */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
@@ -342,24 +342,11 @@ const Merchants = () => {
                       </div>
                     </div>
                   </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-lg font-bold rounded-2xl shadow-xl shadow-indigo-100"
-                    disabled={mutation.isPending}
-                  >
-                    {mutation.isPending ? (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                        <span>Processing Registration...</span>
-                      </div>
-                    ) : 'Complete Registration'}
-                  </Button>
                 </form>
               </CardContent>
             </Card>
 
-            {/* Sidebar: Document Uploads */}
+            {/* Sidebar: Document Uploads & Action */}
             <div className="space-y-8">
               <Card className="shadow-lg border-indigo-100 overflow-hidden">
                 <CardHeader className="bg-indigo-600 text-white">
@@ -410,6 +397,21 @@ const Merchants = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Moved Button Here */}
+              <Button 
+                form="merchant-form"
+                type="submit" 
+                className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-lg font-bold rounded-2xl shadow-xl shadow-indigo-100"
+                disabled={mutation.isPending}
+              >
+                {mutation.isPending ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span>Processing...</span>
+                  </div>
+                ) : 'Complete Registration'}
+              </Button>
 
               <Card className="shadow-md border-slate-200">
                 <CardHeader>
@@ -481,10 +483,10 @@ const Merchants = () => {
                           <TableCell>
                             <div className="flex gap-2">
                               {merchant.kyc_completed_sw && (
-                                <span title="KYC Verified"><ShieldCheck className="h-5 w-5 text-green-500" /></span>
+                                <ShieldCheck className="h-5 w-5 text-green-500" title="KYC Verified" />
                               )}
                               {merchant.agreement_signed_sw && (
-                                <span title="Agreement Signed"><FileText className="h-5 w-5 text-blue-500" /></span>
+                                <FileText className="h-5 w-5 text-blue-500" title="Agreement Signed" />
                               )}
                             </div>
                           </TableCell>
