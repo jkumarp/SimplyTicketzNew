@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Search, Ticket, User, Menu, Users as UsersIcon } from 'lucide-react';
+import { Search, Ticket, User, Menu, Users as UsersIcon, Store } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from 'react-router-dom';
@@ -33,12 +33,20 @@ const Navbar = () => {
           <Button variant="ghost" size="icon" className="md:hidden">
             <Search className="h-5 w-5" />
           </Button>
-          <Link to="/users">
-            <Button variant="ghost" className="hidden sm:flex font-medium gap-2">
-              <UsersIcon className="h-4 w-4" />
-              Users
-            </Button>
-          </Link>
+          <div className="hidden sm:flex items-center gap-2">
+            <Link to="/users">
+              <Button variant="ghost" className="font-medium gap-2">
+                <UsersIcon className="h-4 w-4" />
+                Users
+              </Button>
+            </Link>
+            <Link to="/merchants">
+              <Button variant="ghost" className="font-medium gap-2">
+                <Store className="h-4 w-4" />
+                Merchants
+              </Button>
+            </Link>
+          </div>
           <Button variant="outline" size="icon" className="rounded-full">
             <User className="h-5 w-5" />
           </Button>
