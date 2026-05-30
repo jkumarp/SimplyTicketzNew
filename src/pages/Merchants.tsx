@@ -481,10 +481,10 @@ const Merchants = () => {
                           <TableCell>
                             <div className="flex gap-2">
                               {merchant.kyc_completed_sw && (
-                                <ShieldCheck className="h-5 w-5 text-green-500" title="KYC Verified" />
+                                <span title="KYC Verified"><ShieldCheck className="h-5 w-5 text-green-500" /></span>
                               )}
                               {merchant.agreement_signed_sw && (
-                                <FileText className="h-5 w-5 text-blue-500" title="Agreement Signed" />
+                                <span title="Agreement Signed"><FileText className="h-5 w-5 text-blue-500" /></span>
                               )}
                             </div>
                           </TableCell>
