@@ -8,6 +8,9 @@ import EventCard from '@/components/EventCard';
 import Footer from '@/components/Footer';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { Store, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const MOCK_EVENTS = [
   {
@@ -39,36 +42,6 @@ const MOCK_EVENTS = [
     image: "https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&q=80&w=800",
     category: "Sports",
     rating: 4.8
-  },
-  {
-    id: 4,
-    title: "Gourmet Food Expo",
-    date: "Aug 22, 2024",
-    location: "The Waterfront, Miami",
-    price: "$45",
-    image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=800",
-    category: "Food",
-    rating: 4.6
-  },
-  {
-    id: 5,
-    title: "Midnight Jazz Sessions",
-    date: "Aug 18, 2024",
-    location: "Blue Note, Chicago",
-    price: "$60",
-    image: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&q=80&w=800",
-    category: "Music",
-    rating: 4.9
-  },
-  {
-    id: 6,
-    title: "Modern Art Exhibition",
-    date: "Sep 12, 2024",
-    location: "MoMA, New York",
-    price: "$25",
-    image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=800",
-    category: "Arts",
-    rating: 4.5
   }
 ];
 
@@ -80,6 +53,30 @@ const Index = () => {
       <main className="flex-grow">
         <Hero />
         
+        {/* Merchant CTA Section */}
+        <section className="bg-white border-y py-12">
+          <div className="container px-4 md:px-8">
+            <div className="bg-indigo-50 rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="max-w-xl">
+                <div className="flex items-center gap-2 text-indigo-600 font-bold mb-4">
+                  <Store className="h-5 w-5" />
+                  <span>FOR PARTNERS</span>
+                </div>
+                <h2 className="text-3xl font-bold text-slate-900 mb-4">Are you an event organizer?</h2>
+                <p className="text-slate-600 text-lg">
+                  Join our network of merchants and start selling tickets to thousands of eager fans today.
+                </p>
+              </div>
+              <Link to="/merchants">
+                <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-6 rounded-2xl text-lg font-bold group">
+                  Register as Merchant
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+
         <section className="container px-4 md:px-8 py-16">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
             <div>
