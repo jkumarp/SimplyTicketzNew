@@ -124,3 +124,29 @@ export const setMerchants = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
+export const updateMerchant = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const updateData = req.body;
+
+  try {
+    const { data, error } = await supabase
+      .schema('master')
+      .from('merchant')
+      .update(updateData)
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
