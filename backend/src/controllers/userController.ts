@@ -34,14 +34,36 @@ export const getUsers = async(req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Example Endpoint: Creating an item
 export const setUsers = async(req: Request, res: Response) : Promise<void>=> {
-  const { email } = req.body;
+  const { 
+    id,
+    user_type_id, 
+    merchant_id, 
+    user_fname, 
+    phone_country_code, 
+    phone, 
+    email, 
+    update_by, 
+    update_date, 
+    status_sw 
+  } = req.body;
 
   try {
     const { data, error } = await supabase
-      .from('users')
-      .insert([{ email }])
+      .schema('master')
+      .from('user')
+      .insert([{ 
+        id,
+        user_type_id, 
+        merchant_id, 
+        user_fname, 
+        phone_country_code, 
+        phone, 
+        email, 
+        update_by, 
+        update_date, 
+        status_sw 
+      }])
       .select();
 
     if (error) {
@@ -49,7 +71,10 @@ export const setUsers = async(req: Request, res: Response) : Promise<void>=> {
       return;
     }
 
-    res.status(201).json(data);
+    res.status(201).json({
+      success: true,
+      data,
+    });
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
