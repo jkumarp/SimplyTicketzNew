@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -10,12 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { showSuccess, showError } from "@/utils/toast";
-import { Store, Loader2, Mail, Phone, MapPin, FileText, ShieldCheck, Building2 } from 'lucide-react';
+import { Store, Loader2, Mail, Phone, MapPin, FileText, ShieldCheck, Building2, Upload, CheckCircle2 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
 const Merchants = () => {
   const queryClient = useQueryClient();
+  const [files, setFiles] = useState<{ [key: string]: File | null }>({
+    pan: null,
+    aadhaar: null,
+    gstn: null
+  });
+  
   const [formData, setFormData] = useState({
     contact_person_name: '',
     organization_name: '',
@@ -34,9 +40,6 @@ const Merchants = () => {
     agreement_signed_sw: false,
     db_connection: '',
     gstn: '',
-    pan_docid: '',
-    aadhaar_docid: '',
-    gstn_docid: '',
     update_by: 1,
     status_sw: true
   });
@@ -51,15 +54,43 @@ const Merchants = () => {
     }
   });
 
+  const uploadFile = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_URL}/documents/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) throw new Error(`Failed to upload ${file.name}`);
+    const json = await res.json();
+    return json.data.path;
+  };
+
   const mutation = useMutation({
     mutationFn: async (newMerchant: any) => {
+      // 1. Upload mandatory documents first
+      if (!files.pan || !files.aadhaar) {
+        throw new Error('PAN and AADHAAR documents are mandatory');
+      }
+
+      const pan_docid = await uploadFile(files.pan);
+      const aadhaar_docid = await uploadFile(files.aadhaar);
+      let gstn_docid = '';
+      
+      if (files.gstn) {
+        gstn_docid = await uploadFile(files.gstn);
+      }
+
+      // 2. Submit merchant data with doc IDs
       const res = await fetch(`${API_URL}/merchants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newMerchant,
+          pan_docid,
+          aadhaar_docid,
+          gstn_docid,
           update_date: new Date().toISOString(),
-          // Convert numeric strings to numbers where necessary
           phone_country_code: Number(newMerchant.phone_country_code),
           state: newMerchant.state ? Number(newMerchant.state) : null,
           pincode: newMerchant.pincode ? Number(newMerchant.pincode) : null,
@@ -68,13 +99,14 @@ const Merchants = () => {
           update_by: Number(newMerchant.update_by)
         })
       });
+      
       if (!res.ok) throw new Error('Failed to register merchant');
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['merchants'] });
-      showSuccess('Merchant registered successfully!');
-      // Reset form
+      showSuccess('Merchant registered with documents successfully!');
+      setFiles({ pan: null, aadhaar: null, gstn: null });
       setFormData({
         contact_person_name: '',
         organization_name: '',
@@ -93,9 +125,6 @@ const Merchants = () => {
         agreement_signed_sw: false,
         db_connection: '',
         gstn: '',
-        pan_docid: '',
-        aadhaar_docid: '',
-        gstn_docid: '',
         update_by: 1,
         status_sw: true
       });
@@ -104,6 +133,12 @@ const Merchants = () => {
       showError(error.message || 'Error registering merchant');
     }
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
+    if (e.target.files && e.target.files[0]) {
+      setFiles(prev => ({ ...prev, [type]: e.target.files![0] }));
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,22 +159,22 @@ const Merchants = () => {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            {/* Registration Form */}
             <Card className="xl:col-span-1 h-fit shadow-lg border-indigo-100">
               <CardHeader className="bg-indigo-50/50 rounded-t-xl">
                 <CardTitle className="flex items-center gap-2 text-indigo-700">
                   <Store className="h-5 w-5" />
                   Register Merchant
                 </CardTitle>
-                <CardDescription>Enter organization and contact details</CardDescription>
+                <CardDescription>Enter organization and upload documents</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Basic Info */}
                   <div className="space-y-4">
                     <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                       <Building2 className="h-4 w-4" /> Basic Info
                     </h3>
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Organization Name *</label>
                         <Input 
@@ -161,6 +196,57 @@ const Merchants = () => {
                     </div>
                   </div>
 
+                  {/* Documents Section */}
+                  <div className="space-y-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <Upload className="h-4 w-4 text-indigo-600" /> Required Documents
+                    </h3>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-600">PAN Card (Mandatory) *</label>
+                        <div className="relative">
+                          <Input 
+                            type="file" 
+                            accept=".pdf,.jpg,.png"
+                            onChange={(e) => handleFileChange(e, 'pan')}
+                            className="cursor-pointer"
+                            required
+                          />
+                          {files.pan && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-600">AADHAAR Card (Mandatory) *</label>
+                        <div className="relative">
+                          <Input 
+                            type="file" 
+                            accept=".pdf,.jpg,.png"
+                            onChange={(e) => handleFileChange(e, 'aadhaar')}
+                            className="cursor-pointer"
+                            required
+                          />
+                          {files.aadhaar && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-600">GSTN Certificate (Optional)</label>
+                        <div className="relative">
+                          <Input 
+                            type="file" 
+                            accept=".pdf,.jpg,.png"
+                            onChange={(e) => handleFileChange(e, 'gstn')}
+                            className="cursor-pointer"
+                          />
+                          {files.gstn && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Details */}
                   <div className="space-y-4">
                     <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                       <Phone className="h-4 w-4" /> Contact Details
@@ -186,88 +272,17 @@ const Merchants = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                      <MapPin className="h-4 w-4" /> Address
-                    </h3>
-                    <div className="space-y-2">
-                      <Input 
-                        placeholder="Address Line 1"
-                        value={formData.addressline1}
-                        onChange={(e) => setFormData({...formData, addressline1: e.target.value})}
-                      />
-                      <Input 
-                        placeholder="Address Line 2"
-                        value={formData.addressline2}
-                        onChange={(e) => setFormData({...formData, addressline2: e.target.value})}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Input 
-                        placeholder="Pincode"
-                        value={formData.pincode}
-                        onChange={(e) => setFormData({...formData, pincode: e.target.value})}
-                      />
-                      <Input 
-                        placeholder="State ID"
-                        value={formData.state}
-                        onChange={(e) => setFormData({...formData, state: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                      <FileText className="h-4 w-4" /> Compliance
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Input 
-                        placeholder="PAN Number"
-                        value={formData.pan_number}
-                        onChange={(e) => setFormData({...formData, pan_number: e.target.value})}
-                      />
-                      <Input 
-                        placeholder="GSTN"
-                        value={formData.gstn}
-                        onChange={(e) => setFormData({...formData, gstn: e.target.value})}
-                      />
-                    </div>
-                    <Input 
-                      placeholder="Aadhaar Number"
-                      value={formData.aadhaar_number}
-                      onChange={(e) => setFormData({...formData, aadhaar_number: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="space-y-4 pt-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="kyc" 
-                        checked={formData.kyc_completed_sw}
-                        onCheckedChange={(checked) => setFormData({...formData, kyc_completed_sw: !!checked})}
-                      />
-                      <label htmlFor="kyc" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        KYC Completed
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="agreement" 
-                        checked={formData.agreement_signed_sw}
-                        onCheckedChange={(checked) => setFormData({...formData, agreement_signed_sw: !!checked})}
-                      />
-                      <label htmlFor="agreement" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        Agreement Signed
-                      </label>
-                    </div>
-                  </div>
-
                   <Button 
                     type="submit" 
                     className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 text-lg font-semibold rounded-xl shadow-lg shadow-indigo-100"
                     disabled={mutation.isPending}
                   >
-                    {mutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Register Merchant'}
+                    {mutation.isPending ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Uploading & Registering...</span>
+                      </div>
+                    ) : 'Register Merchant'}
                   </Button>
                 </form>
               </CardContent>
@@ -291,7 +306,7 @@ const Merchants = () => {
                         <TableRow>
                           <TableHead className="font-bold">Organization</TableHead>
                           <TableHead className="font-bold">Contact</TableHead>
-                          <TableHead className="font-bold">Compliance</TableHead>
+                          <TableHead className="font-bold">Documents</TableHead>
                           <TableHead className="font-bold">Status</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -313,36 +328,31 @@ const Merchants = () => {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col gap-1">
-                                {merchant.kyc_completed_sw && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-green-50 text-green-600 px-2 py-0.5 rounded-full border border-green-100">
-                                    <ShieldCheck className="h-3 w-3" /> KYC
+                              <div className="flex flex-wrap gap-1">
+                                {merchant.pan_docid && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">
+                                    PAN
                                   </span>
                                 )}
-                                {merchant.agreement_signed_sw && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">
-                                    <FileText className="h-3 w-3" /> AGREEMENT
+                                {merchant.aadhaar_docid && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">
+                                    AADHAAR
                                   </span>
                                 )}
-                                {!merchant.kyc_completed_sw && !merchant.agreement_signed_sw && (
-                                  <span className="text-xs text-slate-400 italic">Pending</span>
+                                {merchant.gstn_docid && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">
+                                    GSTN
+                                  </span>
                                 )}
                               </div>
                             </TableCell>
                             <TableCell>
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${merchant.status_sw ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${merchant.status_sw ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                                 {merchant.status_sw ? 'ACTIVE' : 'INACTIVE'}
                               </span>
                             </TableCell>
                           </TableRow>
                         ))}
-                        {(!merchants || merchants.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center py-12 text-slate-400 italic">
-                              No merchants registered yet.
-                            </TableCell>
-                          </TableRow>
-                        )}
                       </TableBody>
                     </Table>
                   </div>
