@@ -34,7 +34,7 @@ export const getUsers = async(req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const setUsers = async(req: Request, res: Response) : Promise<void>=> {
+export const setUser = async(req: Request, res: Response) : Promise<void>=> {
   const { 
     id,
     user_type_id, 
