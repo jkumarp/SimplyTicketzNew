@@ -75,6 +75,18 @@ const Merchants = () => {
     }
   });
 
+  const { data: states, isLoading: isLoadingStates } = useQuery({
+    queryKey: ['states', formData.country],
+    queryFn: async () => {
+      if (!formData.country) return [];
+      const res = await fetch(`${API_URL}/states?countryId=${formData.country}`);
+      if (!res.ok) throw new Error('Failed to fetch states');
+      const json = await res.json();
+      return json.data;
+    },
+    enabled: !!formData.country
+  });
+
   const uploadFile = async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -298,28 +310,10 @@ const Merchants = () => {
                       </div>
                       <div className="grid grid-cols-3 gap-4 md:col-span-2">
                         <div className="space-y-2">
-                          <Label>State ID</Label>
-                          <Input 
-                            type="number"
-                            placeholder="State Code"
-                            value={formData.state}
-                            onChange={(e) => setFormData({...formData, state: e.target.value})}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Pincode</Label>
-                          <Input 
-                            type="number"
-                            placeholder="6-digit"
-                            value={formData.pincode}
-                            onChange={(e) => setFormData({...formData, pincode: e.target.value})}
-                          />
-                        </div>
-                        <div className="space-y-2">
                           <Label>Country *</Label>
                           <Select 
                             value={formData.country} 
-                            onValueChange={(value) => setFormData({...formData, country: value})}
+                            onValueChange={(value) => setFormData({...formData, country: value, state: ''})}
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder={isLoadingCountries ? "Loading..." : "Select Country"} />
@@ -332,6 +326,34 @@ const Merchants = () => {
                               ))}
                             </SelectContent>
                           </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>State *</Label>
+                          <Select 
+                            value={formData.state} 
+                            onValueChange={(value) => setFormData({...formData, state: value})}
+                            disabled={!formData.country || isLoadingStates}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder={!formData.country ? "Select Country First" : (isLoadingStates ? "Loading..." : "Select State")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {states?.map((state: any) => (
+                                <SelectItem key={state.id} value={state.id.toString()}>
+                                  {state.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Pincode</Label>
+                          <Input 
+                            type="number"
+                            placeholder="6-digit"
+                            value={formData.pincode}
+                            onChange={(e) => setFormData({...formData, pincode: e.target.value})}
+                          />
                         </div>
                       </div>
                     </div>
