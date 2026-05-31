@@ -47,6 +47,7 @@ export const getUsers = async(req: Request, res: Response): Promise<void> => {
       .from('user')
       .select(`
         id, 
+        auth_uuid,
         user_type_id, 
         merchant_id, 
         user_fname, 
