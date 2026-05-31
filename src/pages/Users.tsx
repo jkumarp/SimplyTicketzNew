@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { showSuccess, showError } from "@/utils/toast";
-import { UserPlus, Loader2, Mail, Phone, User as UserIcon } from 'lucide-react';
+import { UserPlus, Loader2, Mail, Phone, User as UserIcon, Lock } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -19,6 +19,7 @@ const Users = () => {
     user_fname: '',
     email: '',
     phone: '',
+    password: '',
     user_type_id: '1',
     update_by: '1'
   });
@@ -38,22 +39,20 @@ const Users = () => {
       const res = await fetch(`${API_URL}/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newUser,
-          id: Date.now(), // Simple ID generation for demo
-          update_date: new Date().toISOString()
-        })
+        body: JSON.stringify(newUser)
       });
-      if (!res.ok) throw new Error('Failed to create user');
-      return res.json();
+      
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create user');
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      showSuccess('User created successfully!');
-      setFormData({ user_fname: '', email: '', phone: '', user_type_id: '1', update_by: '1' });
+      showSuccess('User created and registered successfully!');
+      setFormData({ user_fname: '', email: '', phone: '', password: '', user_type_id: '1', update_by: '1' });
     },
-    onError: () => {
-      showError('Error creating user');
+    onError: (error: any) => {
+      showError(error.message || 'Error creating user');
     }
   });
 
@@ -91,10 +90,25 @@ const Users = () => {
                   <label className="text-sm font-medium">Email</label>
                   <Input 
                     type="email"
+                    required
                     placeholder="john@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                   />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      type="password"
+                      required
+                      placeholder="Min 6 characters"
+                      className="pl-10"
+                      value={formData.password}
+                      onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Phone</label>
@@ -109,7 +123,7 @@ const Users = () => {
                   type="submit" 
                   className="w-full bg-indigo-600 hover:bg-indigo-700"
                   disabled={mutation.isPending}
-                >
+                )
                   {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create User'}
                 </Button>
               </form>
