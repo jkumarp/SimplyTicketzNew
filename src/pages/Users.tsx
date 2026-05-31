@@ -123,7 +123,7 @@ const Users = () => {
                   type="submit" 
                   className="w-full bg-indigo-600 hover:bg-indigo-700"
                   disabled={mutation.isPending}
-                )
+                >
                   {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create User'}
                 </Button>
               </form>
