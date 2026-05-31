@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase.ts';
+import * as userService from '../services/userService.ts';
 
 export const getUsers = async(req: Request, res: Response): Promise<void> => {
   try {
@@ -34,93 +35,14 @@ export const getUsers = async(req: Request, res: Response): Promise<void> => {
   }
 };
 
-
-export const signUp = async (req: Request, res: Response): Promise<void> => {
-  const { email, password, user_fname, phone } = req.body;
-
+export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      res.status(400).json({ error: error.message });
-      return;
-    }
-
-    if (data.user) {
-      // Sync with master.user table
-      const { error: dbError } = await supabase
-        .schema('master')
-        .from('user')
-        .insert([{
-          id: data.user.id,
-          email: data.user.email,
-          user_fname: user_fname,
-          phone: phone,
-          user_type_id: 1, // Default user type
-          status_sw: true,
-          update_by: 1,
-          update_date: new Date().toISOString()
-        }]);
-
-      if (dbError) {
-        console.error('Error syncing user to DB:', dbError);
-      }
-    }
-
+    const result = await userService.createUser(req.body);
     res.status(201).json({
       success: true,
-      data,
+      data: result,
     });
-  } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
-
-export const setUser = async(req: Request, res: Response) : Promise<void>=> {
-  const { 
-    id,
-    user_type_id, 
-    merchant_id, 
-    user_fname, 
-    phone_country_code, 
-    phone, 
-    email, 
-    update_by, 
-    update_date, 
-    status_sw 
-  } = req.body;
-
-  try {
-    const { data, error } = await supabase
-      .schema('master')
-      .from('user')
-      .insert([{ 
-        id,
-        user_type_id, 
-        merchant_id, 
-        user_fname, 
-        phone_country_code, 
-        phone, 
-        email, 
-        update_by, 
-        update_date, 
-        status_sw 
-      }])
-      .select();
-
-    if (error) {
-      res.status(400).json({ error: error.message });
-      return;
-    }
-
-    res.status(201).json({
-      success: true,
-      data,
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Error creating user' });
   }
 };
