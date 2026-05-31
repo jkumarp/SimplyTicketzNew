@@ -1,7 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import { Database } from '../types/database.types'; // Fallback to 'any' if types weren't generated
 
 dotenv.config();
 
@@ -13,7 +12,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 // Pass Database interface to enforce types across queries
-export const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
+export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     persistSession: false, // Recommended for stateless backend APIs
     autoRefreshToken: false
