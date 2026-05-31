@@ -6,6 +6,7 @@ import merchantRoutes from './routes/merchantRoutes';
 import documentRoutes from './routes/documentRoutes';
 import countryRoutes from './routes/countryRoutes';
 import stateRoutes from './routes/stateRoutes';
+import userTypeRoutes from './routes/userTypeRoutes';
 
 
 const app = express();
@@ -17,6 +18,7 @@ app.use('/api', userRoutes);
 app.use('/api', merchantRoutes);
 app.use('/api', countryRoutes);
 app.use('/api', stateRoutes);
+app.use('/api', userTypeRoutes);
 app.use('/api/documents', documentRoutes);
 
 

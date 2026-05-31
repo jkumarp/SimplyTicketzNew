@@ -25,7 +25,7 @@ const setUser = async (authData: any, userData: any) => {
     .schema('master')
     .from('user')
     .insert([{
-      id: authData.user.id,
+      auth_uuid: authData.user.id,
       email: authData.user.email,
       user_fname: user_fname,
       phone: phone,
