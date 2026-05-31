@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Ticket, User, Menu, Users as UsersIcon, Store, LogIn, LogOut, Loader2 } from 'lucide-react';
+import { Search, Ticket, User, Menu, Users as UsersIcon, Store, LogIn, LogOut, Loader2, LayoutDashboard } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { showSuccess, showError } from "@/utils/toast";
@@ -16,12 +16,12 @@ const Navbar = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) setUser(JSON.parse(storedUser));
     
-    // Listen for storage changes to sync across tabs/components
     const handleStorageChange = () => {
       const updatedUser = localStorage.getItem('user');
       setUser(updatedUser ? JSON.parse(updatedUser) : null);
@@ -48,7 +48,11 @@ const Navbar = () => {
       setUser(data.user);
       setIsLoginOpen(false);
       showSuccess('Welcome back!');
-      // Dispatch event to notify other components
+      
+      // Redirect based on role
+      if (data.user.role === 1) navigate('/admin/dashboard');
+      else if (data.user.role === 2) navigate('/merchant/dashboard');
+      
       window.dispatchEvent(new Event('storage'));
     } catch (err: any) {
       showError(err.message);
@@ -64,11 +68,18 @@ const Navbar = () => {
       localStorage.removeItem('user');
       setUser(null);
       showSuccess('Signed out successfully');
-      // Dispatch event to notify other components
+      navigate('/');
       window.dispatchEvent(new Event('storage'));
     } catch (err: any) {
       showError('Error signing out');
     }
+  };
+
+  const getDashboardLink = () => {
+    if (!user) return null;
+    if (user.role === 1) return '/admin/dashboard';
+    if (user.role === 2) return '/merchant/dashboard';
+    return '/';
   };
 
   return (
@@ -94,11 +105,15 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
-          <Button variant="ghost" size="icon" className="md:hidden">
-            <Search className="h-5 w-5" />
-          </Button>
-          
           <div className="hidden sm:flex items-center gap-2">
+            {user && (
+              <Link to={getDashboardLink() || '#'}>
+                <Button variant="ghost" className="font-medium gap-2 text-indigo-600">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </Button>
+              </Link>
+            )}
             <Link to="/users">
               <Button variant="ghost" className="font-medium gap-2">
                 <UsersIcon className="h-4 w-4" />
@@ -117,7 +132,7 @@ const Navbar = () => {
             <div className="flex items-center gap-2">
               <div className="hidden lg:flex flex-col items-end mr-2">
                 <span className="text-xs font-bold text-slate-900 truncate max-w-[150px]">{user.email}</span>
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Role: {user.role}</span>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Role: {user.role === 1 ? 'Admin' : 'Merchant'}</span>
               </div>
               <Button variant="outline" size="icon" className="rounded-full" onClick={handleLogout} title="Sign Out">
                 <LogOut className="h-4 w-4 text-red-500" />
