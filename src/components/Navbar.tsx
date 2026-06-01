@@ -50,8 +50,11 @@ const Navbar = () => {
       showSuccess('Welcome back!');
       
       // Redirect based on role
-      if (data.user.role === 1) navigate('/admin/dashboard');
-      else if (data.user.role === 2) navigate('/merchant/dashboard');
+      if (data.user.role === 1) {
+        navigate('/admin/dashboard');
+      } else if ([2, 4, 5, 6].includes(data.user.role)) {
+        navigate('/merchant/dashboard');
+      }
       
       window.dispatchEvent(new Event('storage'));
     } catch (err: any) {
@@ -78,7 +81,7 @@ const Navbar = () => {
   const getDashboardLink = () => {
     if (!user) return null;
     if (user.role === 1) return '/admin/dashboard';
-    if (user.role === 2) return '/merchant/dashboard';
+    if ([2, 4, 5, 6].includes(user.role)) return '/merchant/dashboard';
     return '/';
   };
 
