@@ -23,7 +23,7 @@ export const signUp = async (userData: any) => {
  * Internal helper to handle database record creation in master.user
  */
 export const setUser = async (authData: any, userData: any) => {
-  const { user_fname, user_mname, user_lname, user_type_id, phone } = userData;
+  const { user_fname, user_mname, user_lname, user_type_id, phone, merchant_id } = userData;
   
   const { data, error } = await supabase
     .schema('master')
@@ -36,6 +36,7 @@ export const setUser = async (authData: any, userData: any) => {
       user_lname: user_lname,
       phone: phone,
       user_type_id: user_type_id,
+      merchant_id: merchant_id || null,
       status_sw: true,
       update_by: 1,
       update_date: new Date().toISOString()
@@ -96,6 +97,40 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Error creating user' });
+  }
+};
+
+export const updateUser = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const updateData = { ...req.body };
+  
+  // We don't update password or email through this endpoint for security
+  delete updateData.password;
+  delete updateData.email;
+  delete updateData.auth_uuid;
+
+  try {
+    const { data, error } = await supabase
+      .schema('master')
+      .from('user')
+      .update({
+        ...updateData,
+        update_date: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: data[0],
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
