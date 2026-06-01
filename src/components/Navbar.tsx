@@ -107,26 +107,32 @@ const Navbar = () => {
         <div className="flex items-center gap-2 md:gap-4">
           <div className="hidden sm:flex items-center gap-2">
             {user && (
-              <div>
-              <Link to={getDashboardLink() || '#'}>
-                <Button variant="ghost" className="font-medium gap-2 text-indigo-600">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
-                </Button>
-              </Link>
-          
-            <Link to="/users">
-              <Button variant="ghost" className="font-medium gap-2">
-                <UsersIcon className="h-4 w-4" />
-                Users
-              </Button>
-            </Link>
-            <Link to="/merchants">
-              <Button variant="ghost" className="font-medium gap-2">
-                <Store className="h-4 w-4" />
-                Merchants
-              </Button>
-            </Link> </div>
+              <div className="flex items-center gap-2">
+                <Link to={getDashboardLink() || '#'}>
+                  <Button variant="ghost" className="font-medium gap-2 text-indigo-600">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Dashboard
+                  </Button>
+                </Link>
+            
+                {[1, 2].includes(user.role) && (
+                  <Link to="/users">
+                    <Button variant="ghost" className="font-medium gap-2">
+                      <UsersIcon className="h-4 w-4" />
+                      Users
+                    </Button>
+                  </Link>
+                )}
+
+                {[1, 2, 3].includes(user.role) && (
+                  <Link to="/merchants">
+                    <Button variant="ghost" className="font-medium gap-2">
+                      <Store className="h-4 w-4" />
+                      Merchants
+                    </Button>
+                  </Link>
+                )}
+              </div>
             )}
           </div>
         
