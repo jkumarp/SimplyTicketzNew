@@ -16,7 +16,7 @@ import {
   SelectItem, 
   SelectTrigger, 
   SelectValue 
-} from "@/select";
+} from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
 import { UserPlus, Loader2, Mail, Phone, User as UserIcon, Lock, Building2, ShieldCheck, Pencil, X } from 'lucide-react';
 
