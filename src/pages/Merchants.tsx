@@ -21,13 +21,14 @@ import { showSuccess, showError } from "@/utils/toast";
 import { 
   Store, Loader2, Mail, Phone, MapPin, FileText, 
   ShieldCheck, Building2, Upload, CheckCircle2, 
-  CreditCard, ClipboardCheck 
+  CreditCard, ClipboardCheck, Pencil, X
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
 const Merchants = () => {
   const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [files, setFiles] = useState<{ [key: string]: File | null }>({
     pan: null,
     aadhaar: null,
@@ -99,10 +100,35 @@ const Merchants = () => {
     return json.data.path;
   };
 
-  const mutation = useMutation({
+  const resetForm = () => {
+    setEditingId(null);
+    setFiles({ pan: null, aadhaar: null, gstn: null });
+    setFormData({
+      contact_person_name: '',
+      organization_name: '',
+      email: '',
+      phone_country_code: '91',
+      phone: '',
+      pan_number: '',
+      aadhaar_number: '',
+      gstn: '',
+      addressline1: '',
+      addressline2: '',
+      state: '',
+      pincode: '',
+      country: '1',
+      gstn_state: '',
+      kyc_completed_sw: false,
+      agreement_signed_sw: false,
+      status_sw: true,
+      update_by: '1'
+    });
+  };
+
+  const createMutation = useMutation({
     mutationFn: async (newMerchant: any) => {
       if (!files.pan || !files.aadhaar) {
-        throw new Error('PAN and AADHAAR documents are mandatory');
+        throw new Error('PAN and AADHAAR documents are mandatory for new registration');
       }
 
       const pan_docid = await uploadFile(files.pan);
@@ -141,30 +167,55 @@ const Merchants = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['merchants'] });
       showSuccess('Merchant registered successfully!');
-      setFiles({ pan: null, aadhaar: null, gstn: null });
-      setFormData({
-        contact_person_name: '',
-        organization_name: '',
-        email: '',
-        phone_country_code: '91',
-        phone: '',
-        pan_number: '',
-        aadhaar_number: '',
-        gstn: '',
-        addressline1: '',
-        addressline2: '',
-        state: '',
-        pincode: '',
-        country: '1',
-        gstn_state: '',
-        kyc_completed_sw: false,
-        agreement_signed_sw: false,
-        status_sw: true,
-        update_by: '1'
-      });
+      resetForm();
     },
     onError: (error: any) => {
       showError(error.message || 'Error registering merchant');
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (updatedMerchant: any) => {
+      let pan_docid = updatedMerchant.pan_docid;
+      let aadhaar_docid = updatedMerchant.aadhaar_docid;
+      let gstn_docid = updatedMerchant.gstn_docid;
+
+      if (files.pan) pan_docid = await uploadFile(files.pan);
+      if (files.aadhaar) aadhaar_docid = await uploadFile(files.aadhaar);
+      if (files.gstn) gstn_docid = await uploadFile(files.gstn);
+
+      const payload = {
+        ...updatedMerchant,
+        pan_docid,
+        aadhaar_docid,
+        gstn_docid,
+        update_date: new Date().toISOString(),
+        kyc_completed_date: updatedMerchant.kyc_completed_sw ? (updatedMerchant.kyc_completed_date || new Date().toISOString()) : null,
+        agreement_signed_date: updatedMerchant.agreement_signed_sw ? (updatedMerchant.agreement_signed_date || new Date().toISOString()) : null,
+        phone_country_code: parseInt(updatedMerchant.phone_country_code),
+        state: updatedMerchant.state ? parseInt(updatedMerchant.state) : null,
+        pincode: updatedMerchant.pincode ? parseInt(updatedMerchant.pincode) : null,
+        country: parseInt(updatedMerchant.country),
+        gstn_state: updatedMerchant.gstn_state ? parseInt(updatedMerchant.gstn_state) : null,
+        update_by: parseInt(updatedMerchant.update_by)
+      };
+
+      const res = await fetch(`${API_URL}/merchants/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) throw new Error('Failed to update merchant');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchants'] });
+      showSuccess('Merchant updated successfully!');
+      resetForm();
+    },
+    onError: (error: any) => {
+      showError(error.message || 'Error updating merchant');
     }
   });
 
@@ -176,7 +227,36 @@ const Merchants = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate(formData);
+    if (editingId) {
+      updateMutation.mutate(formData);
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
+
+  const handleEdit = (merchant: any) => {
+    setEditingId(merchant.id);
+    setFormData({
+      contact_person_name: merchant.contact_person_name || '',
+      organization_name: merchant.organization_name || '',
+      email: merchant.email || '',
+      phone_country_code: merchant.phone_country_code?.toString() || '91',
+      phone: merchant.phone || '',
+      pan_number: merchant.pan_number || '',
+      aadhaar_number: merchant.aadhaar_number || '',
+      gstn: merchant.gstn || '',
+      addressline1: merchant.addressline1 || '',
+      addressline2: merchant.addressline2 || '',
+      state: merchant.state?.toString() || '',
+      pincode: merchant.pincode?.toString() || '',
+      country: merchant.country?.toString() || '1',
+      gstn_state: merchant.gstn_state?.toString() || '',
+      kyc_completed_sw: !!merchant.kyc_completed_sw,
+      agreement_signed_sw: !!merchant.agreement_signed_sw,
+      status_sw: !!merchant.status_sw,
+      update_by: merchant.update_by?.toString() || '1'
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -185,9 +265,20 @@ const Merchants = () => {
       
       <main className="flex-grow container px-4 md:px-8 py-12">
         <div className="flex flex-col gap-8">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Merchant Onboarding</h1>
-            <p className="text-slate-500">Complete the profile to start selling tickets</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">
+                {editingId ? 'Edit Merchant' : 'Merchant Onboarding'}
+              </h1>
+              <p className="text-slate-500">
+                {editingId ? `Updating profile for ${formData.organization_name}` : 'Complete the profile to start selling tickets'}
+              </p>
+            </div>
+            {editingId && (
+              <Button variant="outline" onClick={resetForm} className="gap-2">
+                <X className="h-4 w-4" /> Cancel Edit
+              </Button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -403,11 +494,13 @@ const Merchants = () => {
                     <Upload className="h-5 w-5" />
                     Required Documents
                   </CardTitle>
-                  <CardDescription className="text-indigo-100">Upload clear scans for verification</CardDescription>
+                  <CardDescription className="text-indigo-100">
+                    {editingId ? 'Upload new files to replace existing ones' : 'Upload clear scans for verification'}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold text-slate-500 uppercase">PAN Card *</Label>
+                    <Label className="text-xs font-bold text-slate-500 uppercase">PAN Card {editingId ? '' : '*'}</Label>
                     <div className="relative group">
                       <Input 
                         type="file" 
@@ -420,7 +513,7 @@ const Merchants = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold text-slate-500 uppercase">Aadhaar Card *</Label>
+                    <Label className="text-xs font-bold text-slate-500 uppercase">Aadhaar Card {editingId ? '' : '*'}</Label>
                     <div className="relative group">
                       <Input 
                         type="file" 
@@ -451,14 +544,14 @@ const Merchants = () => {
                 form="merchant-form"
                 type="submit" 
                 className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-lg font-bold rounded-2xl shadow-xl shadow-indigo-100"
-                disabled={mutation.isPending}
+                disabled={createMutation.isPending || updateMutation.isPending}
               >
-                {mutation.isPending ? (
+                {createMutation.isPending || updateMutation.isPending ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-6 w-6 animate-spin" />
                     <span>Processing...</span>
                   </div>
-                ) : 'Complete Registration'}
+                ) : (editingId ? 'Update Merchant' : 'Complete Registration')}
               </Button>
 
               <Card className="shadow-md border-slate-200">
@@ -501,6 +594,7 @@ const Merchants = () => {
                         <TableHead className="font-bold">Identity</TableHead>
                         <TableHead className="font-bold">Compliance</TableHead>
                         <TableHead className="font-bold">Status</TableHead>
+                        <TableHead className="font-bold text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -542,6 +636,16 @@ const Merchants = () => {
                             <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${merchant.status_sw ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                               {merchant.status_sw ? 'ACTIVE' : 'INACTIVE'}
                             </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                              onClick={() => handleEdit(merchant)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
