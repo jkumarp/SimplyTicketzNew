@@ -21,7 +21,7 @@ import { showSuccess, showError } from "@/utils/toast";
 import { 
   Store, Loader2, Mail, Phone, MapPin, FileText, 
   ShieldCheck, Building2, Upload, CheckCircle2, 
-  CreditCard, ClipboardCheck, Pencil, X
+  CreditCard, ClipboardCheck, Pencil, X, Eye, ExternalLink
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -98,6 +98,17 @@ const Merchants = () => {
     if (!res.ok) throw new Error(`Failed to upload ${file.name}`);
     const json = await res.json();
     return json.data.path;
+  };
+
+  const viewDocument = async (path: string) => {
+    try {
+      const res = await fetch(`${API_URL}/documents/signed-url?path=${path}`);
+      if (!res.ok) throw new Error('Failed to get document link');
+      const json = await res.json();
+      window.open(json.data, '_blank');
+    } catch (err: any) {
+      showError(err.message);
+    }
   };
 
   const resetForm = () => {
@@ -592,6 +603,7 @@ const Merchants = () => {
                         <TableHead className="font-bold">Organization</TableHead>
                         <TableHead className="font-bold">Contact</TableHead>
                         <TableHead className="font-bold">Identity</TableHead>
+                        <TableHead className="font-bold">Documents</TableHead>
                         <TableHead className="font-bold">Compliance</TableHead>
                         <TableHead className="font-bold">Status</TableHead>
                         <TableHead className="font-bold text-right">Actions</TableHead>
@@ -620,6 +632,40 @@ const Merchants = () => {
                             <div className="flex flex-col gap-1">
                               <span className="text-[10px] font-bold text-slate-400 uppercase">PAN: {merchant.pan_number || 'N/A'}</span>
                               <span className="text-[10px] font-bold text-slate-400 uppercase">AADHAAR: {merchant.aadhaar_number || 'N/A'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1.5">
+                              {merchant.pan_docid && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="h-7 px-2 text-[10px] gap-1"
+                                  onClick={() => viewDocument(merchant.pan_docid)}
+                                >
+                                  <Eye className="h-3 w-3" /> PAN
+                                </Button>
+                              )}
+                              {merchant.aadhaar_docid && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="h-7 px-2 text-[10px] gap-1"
+                                  onClick={() => viewDocument(merchant.aadhaar_docid)}
+                                >
+                                  <Eye className="h-3 w-3" /> AADHAAR
+                                </Button>
+                              )}
+                              {merchant.gstn_docid && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="h-7 px-2 text-[10px] gap-1"
+                                  onClick={() => viewDocument(merchant.gstn_docid)}
+                                >
+                                  <Eye className="h-3 w-3" /> GSTN
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
