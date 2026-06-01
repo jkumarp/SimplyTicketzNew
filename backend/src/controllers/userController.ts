@@ -3,7 +3,7 @@ import { supabase } from '../config/supabase.ts';
 import * as jose from 'jose';
 
 // In a real app, this should be a 32-byte key from environment variables
-const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'a-very-secret-key-that-is-32-chars-long-!!');
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || '12345678123456781234567812345678');
 
 /**
  * Internal helper to handle Supabase Auth sign up

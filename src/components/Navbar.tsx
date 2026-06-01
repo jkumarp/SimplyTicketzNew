@@ -107,13 +107,14 @@ const Navbar = () => {
         <div className="flex items-center gap-2 md:gap-4">
           <div className="hidden sm:flex items-center gap-2">
             {user && (
+              <div>
               <Link to={getDashboardLink() || '#'}>
                 <Button variant="ghost" className="font-medium gap-2 text-indigo-600">
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
                 </Button>
               </Link>
-            )}
+          
             <Link to="/users">
               <Button variant="ghost" className="font-medium gap-2">
                 <UsersIcon className="h-4 w-4" />
@@ -125,9 +126,10 @@ const Navbar = () => {
                 <Store className="h-4 w-4" />
                 Merchants
               </Button>
-            </Link>
+            </Link> </div>
+            )}
           </div>
-
+        
           {user ? (
             <div className="flex items-center gap-2">
               <div className="hidden lg:flex flex-col items-end mr-2">
