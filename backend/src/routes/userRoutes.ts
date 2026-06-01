@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUsers, createUser, signInUser, signOutUser } from '../controllers/userController';
+import { getUsers, createUser, updateUser, signInUser, signOutUser } from '../controllers/userController';
 
 const router = Router();
 
@@ -21,6 +21,14 @@ router.get('/users', getUsers);
  *     summary: Create a new user
  */
 router.post('/users', createUser);
+
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   put:
+ *     summary: Update an existing user
+ */
+router.put('/users/:id', updateUser);
 
 /**
  * @swagger

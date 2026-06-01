@@ -16,14 +16,15 @@ import {
   SelectItem, 
   SelectTrigger, 
   SelectValue 
-} from "@/components/ui/select";
+} from "@/select";
 import { showSuccess, showError } from "@/utils/toast";
-import { UserPlus, Loader2, Mail, Phone, User as UserIcon, Lock, Building2, ShieldCheck } from 'lucide-react';
+import { UserPlus, Loader2, Mail, Phone, User as UserIcon, Lock, Building2, ShieldCheck, Pencil, X } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
 const Users = () => {
   const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     user_fname: '',
     user_mname: '',
@@ -71,12 +72,29 @@ const Users = () => {
     }
   });
 
-  const mutation = useMutation({
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData({ 
+      user_fname: '', 
+      user_mname: '', 
+      user_lname: '', 
+      email: '', 
+      phone_country_code: '91', 
+      phone: '', 
+      password: '', 
+      user_type_id: '', 
+      merchant_id: '', 
+      status_sw: true, 
+      update_by: '1' 
+    });
+  };
+
+  const createMutation = useMutation({
     mutationFn: async (newUser: any) => {
       const payload = {
         ...newUser,
         user_type_id: parseInt(newUser.user_type_id),
-        merchant_id: newUser.merchant_id ? parseInt(newUser.merchant_id) : null,
+        merchant_id: newUser.merchant_id && newUser.merchant_id !== 'none' ? parseInt(newUser.merchant_id) : null,
         phone_country_code: parseInt(newUser.phone_country_code),
         update_by: parseInt(newUser.update_by)
       };
@@ -93,23 +111,41 @@ const Users = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      showSuccess('User created and registered successfully!');
-      setFormData({ 
-        user_fname: '', 
-        user_mname: '', 
-        user_lname: '', 
-        email: '', 
-        phone_country_code: '91', 
-        phone: '', 
-        password: '', 
-        user_type_id: '', 
-        merchant_id: '', 
-        status_sw: true, 
-        update_by: '1' 
-      });
+      showSuccess('User created successfully!');
+      resetForm();
     },
     onError: (error: any) => {
       showError(error.message || 'Error creating user');
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (updatedUser: any) => {
+      const payload = {
+        ...updatedUser,
+        user_type_id: parseInt(updatedUser.user_type_id),
+        merchant_id: updatedUser.merchant_id && updatedUser.merchant_id !== 'none' ? parseInt(updatedUser.merchant_id) : null,
+        phone_country_code: parseInt(updatedUser.phone_country_code),
+        update_by: parseInt(updatedUser.update_by)
+      };
+
+      const res = await fetch(`${API_URL}/users/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update user');
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      showSuccess('User updated successfully!');
+      resetForm();
+    },
+    onError: (error: any) => {
+      showError(error.message || 'Error updating user');
     }
   });
 
@@ -119,7 +155,30 @@ const Users = () => {
       showError("Please select a User Role");
       return;
     }
-    mutation.mutate(formData);
+    
+    if (editingId) {
+      updateMutation.mutate(formData);
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
+
+  const handleEdit = (user: any) => {
+    setEditingId(user.id);
+    setFormData({
+      user_fname: user.user_fname || '',
+      user_mname: user.user_mname || '',
+      user_lname: user.user_lname || '',
+      email: user.email || '',
+      phone_country_code: user.phone_country_code?.toString() || '91',
+      phone: user.phone || '',
+      password: '', // Don't populate password for security
+      user_type_id: user.user_type_id?.toString() || '',
+      merchant_id: user.merchant_id?.toString() || 'none',
+      status_sw: !!user.status_sw,
+      update_by: '1'
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -128,18 +187,25 @@ const Users = () => {
       
       <main className="flex-grow container px-4 md:px-8 py-12">
         <div className="flex flex-col gap-8">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">User Management</h1>
-            <p className="text-slate-500">Create and manage system users and their roles</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">User Management</h1>
+              <p className="text-slate-500">Create and manage system users and their roles</p>
+            </div>
+            {editingId && (
+              <Button variant="outline" onClick={resetForm} className="gap-2">
+                <X className="h-4 w-4" /> Cancel Edit
+              </Button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            {/* Add User Form */}
+            {/* Add/Edit User Form */}
             <Card className="xl:col-span-1 h-fit shadow-lg border-indigo-100">
               <CardHeader className="bg-indigo-50/30 border-b">
                 <CardTitle className="flex items-center gap-2 text-indigo-700">
-                  <UserPlus className="h-5 w-5" />
-                  Add New User
+                  {editingId ? <Pencil className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+                  {editingId ? 'Edit User Profile' : 'Add New User'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -179,25 +245,29 @@ const Users = () => {
                     <Input 
                       type="email"
                       placeholder="email@example.com"
+                      disabled={!!editingId} // Email is usually the unique ID in auth
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
                     />
+                    {editingId && <p className="text-[10px] text-slate-400">Email cannot be changed after creation.</p>}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Password *</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input 
-                        type="password"
-                        required
-                        placeholder="Min 6 characters"
-                        className="pl-10"
-                        value={formData.password}
-                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      />
+                  {!editingId && (
+                    <div className="space-y-2">
+                      <Label>Password *</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input 
+                          type="password"
+                          required
+                          placeholder="Min 6 characters"
+                          className="pl-10"
+                          value={formData.password}
+                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="grid grid-cols-4 gap-2">
                     <div className="col-span-1 space-y-2">
@@ -271,14 +341,14 @@ const Users = () => {
                   <Button 
                     type="submit" 
                     className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 mt-4"
-                    disabled={mutation.isPending}
+                    disabled={createMutation.isPending || updateMutation.isPending}
                   >
-                    {mutation.isPending ? (
+                    {createMutation.isPending || updateMutation.isPending ? (
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Creating...</span>
+                        <span>Processing...</span>
                       </div>
-                    ) : 'Create User'}
+                    ) : (editingId ? 'Update User' : 'Create User')}
                   </Button>
                 </form>
               </CardContent>
@@ -303,6 +373,7 @@ const Users = () => {
                           <TableHead className="font-bold">Contact</TableHead>
                           <TableHead className="font-bold">Role & Merchant</TableHead>
                           <TableHead className="font-bold">Status</TableHead>
+                          <TableHead className="font-bold text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -350,11 +421,21 @@ const Users = () => {
                                 {user.status_sw ? 'ACTIVE' : 'INACTIVE'}
                               </span>
                             </TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                onClick={() => handleEdit(user)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                         {(!users || users.length === 0) && (
                           <TableRow>
-                            <TableCell colSpan={4} className="text-center py-20 text-slate-500">
+                            <TableCell colSpan={5} className="text-center py-20 text-slate-500">
                               No users found in the directory.
                             </TableCell>
                           </TableRow>
