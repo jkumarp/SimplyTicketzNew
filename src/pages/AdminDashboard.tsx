@@ -9,17 +9,24 @@ import { Button } from "@/components/ui/button";
 import { Link } from 'react-router-dom';
 import { 
   Users, Store, Ticket, TrendingUp, 
-  ShieldCheck, AlertCircle, ArrowRight,
+  AlertCircle, ArrowRight,
   BarChart3, Activity
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
 const AdminDashboard = () => {
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  };
+
   const { data: users } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/users`);
+      const res = await fetch(`${API_URL}/users`, {
+        headers: { ...getAuthHeader() }
+      });
       return (await res.json()).data;
     }
   });
@@ -27,7 +34,9 @@ const AdminDashboard = () => {
   const { data: merchants } = useQuery({
     queryKey: ['merchants'],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/merchants`);
+      const res = await fetch(`${API_URL}/merchants`, {
+        headers: { ...getAuthHeader() }
+      });
       return (await res.json()).data;
     }
   });
@@ -60,7 +69,6 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, i) => (
               <Card key={i} className="border-none shadow-sm">
@@ -80,7 +88,6 @@ const AdminDashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Management Shortcuts */}
             <Card className="lg:col-span-2 shadow-md border-slate-200">
               <CardHeader>
                 <CardTitle>Management Modules</CardTitle>
@@ -114,7 +121,6 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Recent Activity Placeholder */}
             <Card className="shadow-md border-slate-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
