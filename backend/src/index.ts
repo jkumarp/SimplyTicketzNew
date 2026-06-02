@@ -28,20 +28,21 @@ app.use(express.json());
 // Serve Swagger Docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Mount Routes with Role Protection
-app.use('/api/users', authorizeRoles([1, 2]), userRoutes);
-app.use('/api/merchants', authorizeRoles([1, 2]), merchantRoutes);
+// Public Auth Routes (Must be defined before protected routes or mounted separately)
+import { signInUser, signOutUser } from './controllers/userController';
+app.post('/api/login', signInUser);
+app.post('/api/logout', signOutUser);
 
-// Other routes
+// Mount Protected Routes
+// We mount at /api so that the paths in the routers (like /users) are correctly resolved as /api/users
+app.use('/api', authorizeRoles([1, 2]), userRoutes);
+app.use('/api', authorizeRoles([1, 2]), merchantRoutes);
+
+// Other master data routes (currently public)
 app.use('/api', countryRoutes);
 app.use('/api', stateRoutes);
 app.use('/api', userTypeRoutes);
 app.use('/api/documents', documentRoutes);
-
-// Public Auth Routes
-import { signInUser, signOutUser } from './controllers/userController';
-app.post('/api/login', signInUser);
-app.post('/api/logout', signOutUser);
 
 app.listen(PORT, () => {
   console.log(`Server running smoothly http://localhost:${PORT}/`);

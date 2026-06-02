@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUsers, createUser, updateUser, signInUser, signOutUser } from '../controllers/userController';
+import { getUsers, createUser, updateUser } from '../controllers/userController';
 
 const router = Router();
 
@@ -29,21 +29,5 @@ router.post('/users', createUser);
  *     summary: Update an existing user
  */
 router.put('/users/:id', updateUser);
-
-/**
- * @swagger
- * /api/login:
- *   post:
- *     summary: Authenticate a user and return a token
- */
-router.post('/login', signInUser);
-
-/**
- * @swagger
- * /api/logout:
- *   post:
- *     summary: Sign out the current user
- */
-router.post('/logout', signOutUser);
 
 export default router;
