@@ -39,11 +39,18 @@ const Users = () => {
     update_by: '1'
   });
 
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  };
+
   // Fetch Users
   const { data: users, isLoading: isLoadingUsers } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/users`);
+      const res = await fetch(`${API_URL}/users`, {
+        headers: { ...getAuthHeader() }
+      });
       if (!res.ok) throw new Error('Failed to fetch users');
       const json = await res.json();
       return json.data;
@@ -65,7 +72,9 @@ const Users = () => {
   const { data: merchants, isLoading: isLoadingMerchants } = useQuery({
     queryKey: ['merchants'],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/merchants`);
+      const res = await fetch(`${API_URL}/merchants`, {
+        headers: { ...getAuthHeader() }
+      });
       if (!res.ok) throw new Error('Failed to fetch merchants');
       const json = await res.json();
       return json.data;
@@ -101,7 +110,10 @@ const Users = () => {
 
       const res = await fetch(`${API_URL}/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
         body: JSON.stringify(payload)
       });
       
@@ -131,7 +143,10 @@ const Users = () => {
 
       const res = await fetch(`${API_URL}/users/${editingId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
         body: JSON.stringify(payload)
       });
       
@@ -172,7 +187,7 @@ const Users = () => {
       email: user.email || '',
       phone_country_code: user.phone_country_code?.toString() || '91',
       phone: user.phone || '',
-      password: '', // Don't populate password for security
+      password: '', 
       user_type_id: user.user_type_id?.toString() || '',
       merchant_id: user.merchant_id?.toString() || 'none',
       status_sw: !!user.status_sw,
@@ -200,7 +215,6 @@ const Users = () => {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            {/* Add/Edit User Form */}
             <Card className="xl:col-span-1 h-fit shadow-lg border-indigo-100">
               <CardHeader className="bg-indigo-50/30 border-b">
                 <CardTitle className="flex items-center gap-2 text-indigo-700">
@@ -245,11 +259,10 @@ const Users = () => {
                     <Input 
                       type="email"
                       placeholder="email@example.com"
-                      disabled={!!editingId} // Email is usually the unique ID in auth
+                      disabled={!!editingId}
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
                     />
-                    {editingId && <p className="text-[10px] text-slate-400">Email cannot be changed after creation.</p>}
                   </div>
 
                   {!editingId && (
@@ -354,7 +367,6 @@ const Users = () => {
               </CardContent>
             </Card>
 
-            {/* Users List */}
             <Card className="xl:col-span-2 shadow-md border-slate-200">
               <CardHeader>
                 <CardTitle>User Directory</CardTitle>
@@ -433,13 +445,6 @@ const Users = () => {
                             </TableCell>
                           </TableRow>
                         ))}
-                        {(!users || users.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-20 text-slate-500">
-                              No users found in the directory.
-                            </TableCell>
-                          </TableRow>
-                        )}
                       </TableBody>
                     </Table>
                   </div>
