@@ -76,7 +76,9 @@ const Merchants = () => {
   const { data: countries } = useQuery({
     queryKey: ['countries'],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/countries`);
+      const res = await fetch(`${API_URL}/countries`, {
+        headers: { ...getAuthHeader() }
+      });
       const json = await res.json();
       return json.data;
     }
@@ -86,7 +88,9 @@ const Merchants = () => {
     queryKey: ['states', formData.country],
     queryFn: async () => {
       if (!formData.country) return [];
-      const res = await fetch(`${API_URL}/states?countryId=${formData.country}`);
+      const res = await fetch(`${API_URL}/states?countryId=${formData.country}`, {
+        headers: { ...getAuthHeader() }
+      });
       const json = await res.json();
       return json.data;
     },
