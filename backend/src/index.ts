@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import userRoutes from './routes/userRoutes';
 import merchantRoutes from './routes/merchantRoutes';
 import merchantServicesRoutes from './routes/merchantServicesRoutes';
+import merchantSubscriptionRoutes from './routes/merchantSubscriptionRoutes';
 import documentRoutes from './routes/documentRoutes';
 import countryRoutes from './routes/countryRoutes';
 import stateRoutes from './routes/stateRoutes';
@@ -38,6 +39,7 @@ app.post('/api/logout', signOutUser);
 app.use('/api', authorizeRoles([1, 2]), userRoutes);
 app.use('/api', authorizeRoles([1, 2]), merchantRoutes);
 app.use('/api', authorizeRoles([1, 2]), merchantServicesRoutes);
+app.use('/api', authorizeRoles([1, 2]), merchantSubscriptionRoutes);
 
 // Other master data routes
 app.use('/api', countryRoutes);

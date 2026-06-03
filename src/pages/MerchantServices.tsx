@@ -143,7 +143,10 @@ const MerchantServices = () => {
   const { data: countries } = useQuery({
     queryKey: ['countries'],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/countries`);
+      const res = await fetch(`${API_URL}/countries`, {
+        headers: { ...getAuthHeader() }
+      });
+      if (!res.ok) throw new Error('Failed to fetch countries');
       return (await res.json()).data;
     }
   });
@@ -152,7 +155,10 @@ const MerchantServices = () => {
     queryKey: ['states', selectedCountry],
     queryFn: async () => {
       if (!selectedCountry) return [];
-      const res = await fetch(`${API_URL}/states?countryId=${selectedCountry}`);
+      const res = await fetch(`${API_URL}/states?countryId=${selectedCountry}`, {
+        headers: { ...getAuthHeader() }
+      });
+      if (!res.ok) throw new Error('Failed to fetch states');
       return (await res.json()).data;
     },
     enabled: !!selectedCountry
