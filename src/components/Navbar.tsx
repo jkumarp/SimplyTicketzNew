@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Ticket, User, Menu, Users as UsersIcon, Store, LogIn, LogOut, Loader2, LayoutDashboard, Briefcase, Clock, CreditCard } from 'lucide-react';
+import { Search, Ticket, User, Menu, Users as UsersIcon, Store, LogIn, LogOut, Loader2, LayoutDashboard, Briefcase, Clock, CreditCard, Tags } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from 'react-router-dom';
@@ -141,6 +141,15 @@ const Navbar = () => {
                     <Button variant="ghost" className="font-medium gap-2">
                       <Briefcase className="h-4 w-4" />
                       Services
+                    </Button>
+                  </Link>
+                )}
+
+                {[1, 2].includes(user.role) && (
+                  <Link to="/merchant-categories">
+                    <Button variant="ghost" className="font-medium gap-2">
+                      <Tags className="h-4 w-4" />
+                      Categories
                     </Button>
                   </Link>
                 )}
