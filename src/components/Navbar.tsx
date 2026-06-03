@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Ticket, User, Menu, Users as UsersIcon, Store, LogIn, LogOut, Loader2, LayoutDashboard, Briefcase } from 'lucide-react';
+import { Search, Ticket, User, Menu, Users as UsersIcon, Store, LogIn, LogOut, Loader2, LayoutDashboard, Briefcase, Clock } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from 'react-router-dom';
@@ -144,6 +144,15 @@ const Navbar = () => {
                     </Button>
                   </Link>
                 )}
+
+                {[1, 2].includes(user.role) && (
+                  <Link to="/merchant-timeslots">
+                    <Button variant="ghost" className="font-medium gap-2">
+                      <Clock className="h-4 w-4" />
+                      Timeslots
+                    </Button>
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -189,7 +198,7 @@ const Navbar = () => {
                       type="password" 
                       required 
                       value={loginData.password}
-                      onChange={(e) => setFormData({...loginData, password: e.target.value})}
+                      onChange={(e) => setLoginData({...loginData, password: e.target.value})}
                     />
                   </div>
                   <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
