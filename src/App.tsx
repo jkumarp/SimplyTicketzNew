@@ -8,6 +8,7 @@ import Users from "./pages/Users";
 import Merchants from "./pages/Merchants.tsx";
 import MerchantServices from "./pages/MerchantServices.tsx";
 import MerchantTicketTimeslots from "./pages/MerchantTicketTimeslots.tsx";
+import MerchantSubscription from "./pages/MerchantSubscription.tsx";
 import AdminDashboard from "./pages/AdminDashboard";
 import MerchantDashboard from "./pages/MerchantDashboard";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/merchants" element={<Merchants />} />
           <Route path="/merchant-services" element={<MerchantServices />} />
           <Route path="/merchant-timeslots" element={<MerchantTicketTimeslots />} />
+          <Route path="/merchant-subscriptions" element={<MerchantSubscription />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
