@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,9 +10,25 @@ import CategoryTab from '@/components/service-mgmt/CategoryTab';
 import TimeslotTab from '@/components/service-mgmt/TimeslotTab';
 import { Briefcase, Ticket, Clock, ChevronRight } from 'lucide-react';
 
+const API_URL = 'http://localhost:5000/api';
+
 const MerchantServices = () => {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("services");
+
+  const { data: services } = useQuery({
+    queryKey: ['merchant-services'],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/merchant-services`, { 
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } 
+      });
+      const json = await res.json();
+      return json.data;
+    },
+    enabled: !!selectedServiceId
+  });
+
+  const selectedService = services?.find((s: any) => s.id.toString() === selectedServiceId);
 
   const handleServiceSelect = (id: string) => {
     setSelectedServiceId(id);
@@ -32,7 +49,9 @@ const MerchantServices = () => {
             {selectedServiceId && (
               <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100">
                 <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Active Context:</span>
-                <span className="text-sm font-medium text-slate-700">Service ID #{selectedServiceId}</span>
+                <span className="text-sm font-medium text-slate-700">
+                  {selectedService ? `${selectedService.name} (#${selectedServiceId})` : `Service ID #${selectedServiceId}`}
+                </span>
                 <ChevronRight className="h-4 w-4 text-indigo-300" />
               </div>
             )}
