@@ -9,6 +9,7 @@ import merchantSubscriptionRoutes from './routes/merchantSubscriptionRoutes';
 import ticketTimeslotRoutes from './routes/ticketTimeslotRoutes';
 import ticketCategoryRoutes from './routes/ticketCategoryRoutes';
 import merchantDeviceRoutes from './routes/merchantDeviceRoutes';
+import ticketRoutes from './routes/ticketRoutes';
 import documentRoutes from './routes/documentRoutes';
 import countryRoutes from './routes/countryRoutes';
 import stateRoutes from './routes/stateRoutes';
@@ -46,6 +47,7 @@ app.use('/api', authorizeRoles([1, 2]), merchantSubscriptionRoutes);
 app.use('/api', authorizeRoles([1, 2]), ticketTimeslotRoutes);
 app.use('/api', authorizeRoles([1, 2]), ticketCategoryRoutes);
 app.use('/api', authorizeRoles([1, 2]), merchantDeviceRoutes);
+app.use('/api', authorizeRoles([1, 2]), ticketRoutes);
 
 // Other master data routes
 app.use('/api', countryRoutes);
