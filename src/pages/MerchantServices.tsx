@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ServiceTab from '@/components/service-mgmt/ServiceTab';
 import CategoryTab from '@/components/service-mgmt/CategoryTab';
 import TimeslotTab from '@/components/service-mgmt/TimeslotTab';
-import { Briefcase, Ticket, Clock, ChevronRight } from 'lucide-react';
+import DeviceTab from '@/components/service-mgmt/DeviceTab';
+import { Briefcase, Ticket, Clock, ChevronRight, Smartphone } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -58,18 +59,22 @@ const MerchantServices = () => {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-14 p-1 bg-slate-200/50 rounded-2xl mb-8">
+            <TabsList className="grid w-full grid-cols-4 h-14 p-1 bg-slate-200/50 rounded-2xl mb-8">
               <TabsTrigger value="services" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
                 <Briefcase className="h-4 w-4" />
                 <span className="hidden sm:inline">Services</span>
               </TabsTrigger>
               <TabsTrigger value="categories" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
                 <Ticket className="h-4 w-4" />
-                <span className="hidden sm:inline">Ticket Categories</span>
+                <span className="hidden sm:inline">Categories</span>
               </TabsTrigger>
               <TabsTrigger value="timeslots" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
                 <Clock className="h-4 w-4" />
                 <span className="hidden sm:inline">Timeslots</span>
+              </TabsTrigger>
+              <TabsTrigger value="devices" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
+                <Smartphone className="h-4 w-4" />
+                <span className="hidden sm:inline">Scanning Devices</span>
               </TabsTrigger>
             </TabsList>
 
@@ -86,6 +91,10 @@ const MerchantServices = () => {
 
             <TabsContent value="timeslots" className="mt-0 outline-none">
               <TimeslotTab serviceId={selectedServiceId} />
+            </TabsContent>
+
+            <TabsContent value="devices" className="mt-0 outline-none">
+              <DeviceTab serviceId={selectedServiceId} />
             </TabsContent>
           </Tabs>
         </div>
