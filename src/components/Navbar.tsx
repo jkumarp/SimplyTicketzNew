@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Ticket, User, Menu, Users as UsersIcon, Store, LogIn, LogOut, Loader2, LayoutDashboard, Briefcase, Clock, CreditCard, Tags } from 'lucide-react';
+import { Search, Ticket, User, Menu, Users as UsersIcon, Store, LogIn, LogOut, Loader2, LayoutDashboard, Briefcase, CreditCard } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from 'react-router-dom';
@@ -49,12 +49,8 @@ const Navbar = () => {
       setIsLoginOpen(false);
       showSuccess('Welcome back!');
       
-      // Redirect based on role
-      if (data.user.role === 1) {
-        navigate('/admin/dashboard');
-      } else if ([2, 4, 5, 6].includes(data.user.role)) {
-        navigate('/merchant/dashboard');
-      }
+      if (data.user.role === 1) navigate('/admin/dashboard');
+      else if ([2, 4, 5, 6].includes(data.user.role)) navigate('/merchant/dashboard');
       
       window.dispatchEvent(new Event('storage'));
     } catch (err: any) {
@@ -89,21 +85,14 @@ const Navbar = () => {
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4 md:px-8">
         <Link to="/" className="flex items-center gap-2">
-          <div className="bg-indigo-600 p-1.5 rounded-lg">
-            <Ticket className="h-6 w-6 text-white" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-indigo-600 hidden sm:inline-block">
-            SimplyTicketz
-          </span>
+          <div className="bg-indigo-600 p-1.5 rounded-lg"><Ticket className="h-6 w-6 text-white" /></div>
+          <span className="text-xl font-bold tracking-tight text-indigo-600 hidden sm:inline-block">SimplyTicketz</span>
         </Link>
 
         <div className="hidden md:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search events, artists, or venues..." 
-              className="pl-10 bg-muted/50 border-none focus-visible:ring-indigo-500 rounded-full"
-            />
+            <Input placeholder="Search events..." className="pl-10 bg-muted/50 border-none focus-visible:ring-indigo-500 rounded-full" />
           </div>
         </div>
 
@@ -111,125 +100,33 @@ const Navbar = () => {
           <div className="hidden sm:flex items-center gap-2">
             {user && (
               <div className="flex items-center gap-2">
-                <Link to={getDashboardLink() || '#'}>
-                  <Button variant="ghost" className="font-medium gap-2 text-indigo-600">
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </Button>
-                </Link>
-            
-                {[1, 2].includes(user.role) && (
-                  <Link to="/users">
-                    <Button variant="ghost" className="font-medium gap-2">
-                      <UsersIcon className="h-4 w-4" />
-                      Users
-                    </Button>
-                  </Link>
-                )}
-
-                {[1, 2, 3].includes(user.role) && (
-                  <Link to="/merchants">
-                    <Button variant="ghost" className="font-medium gap-2">
-                      <Store className="h-4 w-4" />
-                      Merchants
-                    </Button>
-                  </Link>
-                )}
-
-                {[1, 2].includes(user.role) && (
-                  <Link to="/merchant-services">
-                    <Button variant="ghost" className="font-medium gap-2">
-                      <Briefcase className="h-4 w-4" />
-                      Services
-                    </Button>
-                  </Link>
-                )}
-
-                {[1, 2].includes(user.role) && (
-                  <Link to="/merchant-categories">
-                    <Button variant="ghost" className="font-medium gap-2">
-                      <Tags className="h-4 w-4" />
-                      Categories
-                    </Button>
-                  </Link>
-                )}
-
-                {[1, 2].includes(user.role) && (
-                  <Link to="/merchant-timeslots">
-                    <Button variant="ghost" className="font-medium gap-2">
-                      <Clock className="h-4 w-4" />
-                      Timeslots
-                    </Button>
-                  </Link>
-                )}
-
-                {[1, 2].includes(user.role) && (
-                  <Link to="/merchant-subscriptions">
-                    <Button variant="ghost" className="font-medium gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      Subscriptions
-                    </Button>
-                  </Link>
-                )}
+                <Link to={getDashboardLink() || '#'}><Button variant="ghost" className="font-medium gap-2 text-indigo-600"><LayoutDashboard className="h-4 w-4" />Dashboard</Button></Link>
+                {[1, 2].includes(user.role) && <Link to="/users"><Button variant="ghost" className="font-medium gap-2"><UsersIcon className="h-4 w-4" />Users</Button></Link>}
+                {[1, 2, 3].includes(user.role) && <Link to="/merchants"><Button variant="ghost" className="font-medium gap-2"><Store className="h-4 w-4" />Merchants</Button></Link>}
+                {[1, 2].includes(user.role) && <Link to="/merchant-services"><Button variant="ghost" className="font-medium gap-2"><Briefcase className="h-4 w-4" />Services</Button></Link>}
+                {[1, 2].includes(user.role) && <Link to="/merchant-subscriptions"><Button variant="ghost" className="font-medium gap-2"><CreditCard className="h-4 w-4" />Subscriptions</Button></Link>}
               </div>
             )}
           </div>
         
           {user ? (
             <div className="flex items-center gap-2">
-              <div className="hidden lg:flex flex-col items-end mr-2">
-                <span className="text-xs font-bold text-slate-900 truncate max-w-[150px]">{user.email}</span>
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Role: {user.role === 1 ? 'Admin' : 'Merchant'}</span>
-              </div>
-              <Button variant="outline" size="icon" className="rounded-full" onClick={handleLogout} title="Sign Out">
-                <LogOut className="h-4 w-4 text-red-500" />
-              </Button>
+              <Button variant="outline" size="icon" className="rounded-full" onClick={handleLogout} title="Sign Out"><LogOut className="h-4 w-4 text-red-500" /></Button>
             </div>
           ) : (
             <Dialog open={isLoginOpen} onOpenChange={setIsLoginOpen}>
-              <DialogTrigger asChild>
-                <Button variant="default" className="bg-indigo-600 hover:bg-indigo-700 rounded-full px-6">
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Sign In
-                </Button>
-              </DialogTrigger>
+              <DialogTrigger asChild><Button variant="default" className="bg-indigo-600 hover:bg-indigo-700 rounded-full px-6"><LogIn className="h-4 w-4 mr-2" />Sign In</Button></DialogTrigger>
               <DialogContent className="sm:max-w-[400px]">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-bold text-center">Sign In</DialogTitle>
-                </DialogHeader>
+                <DialogHeader><DialogTitle className="text-2xl font-bold text-center">Sign In</DialogTitle></DialogHeader>
                 <form onSubmit={handleLogin} className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nav-email">Email</Label>
-                    <Input 
-                      id="nav-email" 
-                      type="email" 
-                      placeholder="name@example.com" 
-                      required 
-                      value={loginData.email}
-                      onChange={(e) => setLoginData({...loginData, email: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nav-password">Password</Label>
-                    <Input 
-                      id="nav-password" 
-                      type="password" 
-                      required 
-                      value={loginData.password}
-                      onChange={(e) => setLoginData({...loginData, password: e.target.value})}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign In'}
-                  </Button>
+                  <div className="space-y-2"><Label htmlFor="nav-email">Email</Label><Input id="nav-email" type="email" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} /></div>
+                  <div className="space-y-2"><Label htmlFor="nav-password">Password</Label><Input id="nav-password" type="password" required value={loginData.password} onChange={(e) => setLoginData({...loginData, password: e.target.value})} /></div>
+                  <Button type="submit" className="w-full bg-indigo-600" disabled={isLoading}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign In'}</Button>
                 </form>
               </DialogContent>
             </Dialog>
           )}
-
-          <Button variant="ghost" size="icon" className="md:hidden">
-            <Menu className="h-5 w-5" />
-          </Button>
+          <Button variant="ghost" size="icon" className="md:hidden"><Menu className="h-5 w-5" /></Button>
         </div>
       </div>
     </nav>
