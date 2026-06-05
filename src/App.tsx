@@ -10,6 +10,8 @@ import MerchantServices from "./pages/MerchantServices.tsx";
 import MerchantSubscription from "./pages/MerchantSubscription.tsx";
 import AdminDashboard from "./pages/AdminDashboard";
 import MerchantDashboard from "./pages/MerchantDashboard";
+import MerchantTicketBooking from "./pages/MerchantTicketBooking";
+import MerchantManageTickets from "./pages/MerchantManageTickets";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,8 @@ const App = () => (
           <Route path="/merchant-subscriptions" element={<MerchantSubscription />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
+          <Route path="/merchant/book/:serviceId" element={<MerchantTicketBooking />} />
+          <Route path="/merchant/manage/:serviceId" element={<MerchantManageTickets />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
