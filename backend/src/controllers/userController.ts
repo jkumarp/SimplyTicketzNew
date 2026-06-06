@@ -144,15 +144,16 @@ export const signInUser = async (req: Request, res: Response): Promise<void> => 
     const { data: dbUser } = await supabase
       .schema('master')
       .from('user')
-      .select('user_type_id')
+      .select('user_type_id,merchant_id')
       .eq('auth_uuid', data.user.id)
       .single();
 
     const role = dbUser?.user_type_id || 1;
+    const merchant_id = dbUser?.merchant_id || '';
 
     // Create JWE (JSON Web Encryption)
     const jwe = await new jose.CompactEncrypt(
-      new TextEncoder().encode(JSON.stringify({ email: data.user.email, role }))
+      new TextEncoder().encode(JSON.stringify({ email: data.user.email, role,merchant_id }))
     )
       .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
       .encrypt(SECRET);
@@ -160,7 +161,7 @@ export const signInUser = async (req: Request, res: Response): Promise<void> => 
     res.status(200).json({
       success: true,
       token: jwe,
-      user: { email: data.user.email, role }
+      user: { email: data.user.email, role,merchant_id }
     });
   } catch (err: any) {
     res.status(401).json({ error: err.message });

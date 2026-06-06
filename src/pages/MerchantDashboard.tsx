@@ -86,7 +86,7 @@ const MerchantDashboard = () => {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>Your Active Services</CardTitle>
-                  <CardDescription>Manage your live ticket sales and bookings</CardDescription>
+                  <CardDescription>Manage your active services sales and bookings</CardDescription>
                 </div>
               </CardHeader>
               <CardContent>
