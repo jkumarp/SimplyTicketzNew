@@ -45,12 +45,12 @@ app.use('/api', authorizeRoles(1,2,3,4,5), merchantRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), merchantServicesRoutes);
 
 
-app.use('/api', authorizeRoles(1, 2), merchantSubscriptionRoutes);
-app.use('/api', authorizeRoles(1, 2), ticketTimeslotRoutes);
-app.use('/api', authorizeRoles(1, 2), ticketCategoryRoutes);
-app.use('/api', authorizeRoles(1, 2), merchantDeviceRoutes);
-app.use('/api', authorizeRoles(1, 2), ticketRoutes);
-app.use('/api', authorizeRoles(1, 2), ticketDetailRoutes);
+app.use('/api', authorizeRoles(1,2,3,4,5), merchantSubscriptionRoutes);
+app.use('/api', authorizeRoles(1,2,3,4,5), ticketTimeslotRoutes);
+app.use('/api', authorizeRoles(1,2,3,4,5), ticketCategoryRoutes);
+app.use('/api', authorizeRoles(1,2,3,4,5), merchantDeviceRoutes);
+app.use('/api', authorizeRoles(1,2,3,4,5), ticketRoutes);
+app.use('/api', authorizeRoles(1,2,3,4,5), ticketDetailRoutes);
 app.use('/api', authorizeRoles(1, 2), userRoutes);
 
 
