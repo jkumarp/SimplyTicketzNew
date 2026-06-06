@@ -41,15 +41,18 @@ app.post('/api/login', signInUser);
 app.post('/api/logout', signOutUser);
 
 // Mount Protected Routes
-app.use('/api', authorizeRoles([1, 2]), userRoutes);
-app.use('/api', authorizeRoles([1, 2]), merchantRoutes);
-app.use('/api', authorizeRoles([1, 2]), merchantServicesRoutes);
-app.use('/api', authorizeRoles([1, 2]), merchantSubscriptionRoutes);
-app.use('/api', authorizeRoles([1, 2]), ticketTimeslotRoutes);
-app.use('/api', authorizeRoles([1, 2]), ticketCategoryRoutes);
-app.use('/api', authorizeRoles([1, 2]), merchantDeviceRoutes);
-app.use('/api', authorizeRoles([1, 2]), ticketRoutes);
-app.use('/api', authorizeRoles([1, 2]), ticketDetailRoutes);
+app.use('/api', authorizeRoles(1,2,3,4,5), merchantRoutes);
+app.use('/api', authorizeRoles(1,2,3,4,5), merchantServicesRoutes);
+
+
+app.use('/api', authorizeRoles(1, 2), merchantSubscriptionRoutes);
+app.use('/api', authorizeRoles(1, 2), ticketTimeslotRoutes);
+app.use('/api', authorizeRoles(1, 2), ticketCategoryRoutes);
+app.use('/api', authorizeRoles(1, 2), merchantDeviceRoutes);
+app.use('/api', authorizeRoles(1, 2), ticketRoutes);
+app.use('/api', authorizeRoles(1, 2), ticketDetailRoutes);
+app.use('/api', authorizeRoles(1, 2), userRoutes);
+
 
 // Other master data routes
 app.use('/api', countryRoutes);

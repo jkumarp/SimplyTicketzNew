@@ -6,7 +6,7 @@ dotenv.config();
 
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || '12345678123456781234567812345678');
 
-export const authorizeRoles = (allowedRoles: number[]) => {
+export const authorizeRoles = (...roles: number[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const authHeader = req.headers.authorization;
@@ -19,7 +19,7 @@ export const authorizeRoles = (allowedRoles: number[]) => {
       const { plaintext } = await jose.compactDecrypt(token, SECRET);
       const payload = JSON.parse(new TextDecoder().decode(plaintext));
       
-      if (!allowedRoles.includes(payload.role)) {
+      if (!roles.includes(payload.role)) {
         res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
         return;
       }
