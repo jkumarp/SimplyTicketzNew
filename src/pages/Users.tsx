@@ -132,6 +132,141 @@ const Users = () => {
   });
 
   const updateMutation = useMutation({
+    mutationFn: async (updatedUser: any) => {<dyad-write path="src/pages/Users.tsx" description="Fixing handleEdit to correctly populate all form controls including Select components.">
+"use client";
+
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { showSuccess, showError } from "@/utils/toast";
+import { UserPlus, Loader2, Mail, Phone, User as UserIcon, Lock, Building2, ShieldCheck, Pencil, X } from 'lucide-react';
+
+const API_URL = 'http://localhost:5000/api';
+
+const Users = () => {
+  const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    user_fname: '',
+    user_mname: '',
+    user_lname: '',
+    email: '',
+    phone_country_code: '91',
+    phone: '',
+    password: '',
+    user_type_id: '',
+    merchant_id: '',
+    status_sw: true,
+    update_by: '1'
+  });
+
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  };
+
+  // Fetch Users
+  const { data: users, isLoading: isLoadingUsers } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/users`, {
+        headers: { ...getAuthHeader() }
+      });
+      if (!res.ok) throw new Error('Failed to fetch users');
+      const json = await res.json();
+      return json.data;
+    }
+  });
+
+  // Fetch User Types
+  const { data: userTypes, isLoading: isLoadingTypes } = useQuery({
+    queryKey: ['user-types'],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/user-types`);
+      if (!res.ok) throw new Error('Failed to fetch user types');
+      const json = await res.json();
+      return json.data;
+    }
+  });
+
+  // Fetch Merchants
+  const { data: merchants, isLoading: isLoadingMerchants } = useQuery({
+    queryKey: ['merchants'],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/merchants`, {
+        headers: { ...getAuthHeader() }
+      });
+      if (!res.ok) throw new Error('Failed to fetch merchants');
+      const json = await res.json();
+      return json.data;
+    }
+  });
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData({ 
+      user_fname: '', 
+      user_mname: '', 
+      user_lname: '', 
+      email: '', 
+      phone_country_code: '91', 
+      phone: '', 
+      password: '', 
+      user_type_id: '', 
+      merchant_id: '', 
+      status_sw: true, 
+      update_by: '1' 
+    });
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async (newUser: any) => {
+      const payload = {
+        ...newUser,
+        user_type_id: parseInt(newUser.user_type_id),
+        merchant_id: newUser.merchant_id && newUser.merchant_id !== 'none' ? parseInt(newUser.merchant_id) : null,
+        phone_country_code: parseInt(newUser.phone_country_code),
+        update_by: parseInt(newUser.update_by)
+      };
+
+      const res = await fetch(`${API_URL}/users`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create user');
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      showSuccess('User created successfully!');
+      resetForm();
+    },
+    onError: (error: any) => {
+      showError(error.message || 'Error creating user');
+    }
+  });
+
+  const updateMutation = useMutation({
     mutationFn: async (updatedUser: any) => {
       const payload = {
         ...updatedUser,
@@ -179,7 +314,7 @@ const Users = () => {
   };
 
   const handleEdit = (user: any) => {
-    setEditingId(user.id);
+    setEditingId(user.id.toString());
     setFormData({
       user_fname: user.user_fname || '',
       user_mname: user.user_mname || '',
@@ -385,7 +520,7 @@ const Users = () => {
                           <TableHead className="font-bold">Contact</TableHead>
                           <TableHead className="font-bold">Role & Merchant</TableHead>
                           <TableHead className="font-bold">Status</TableHead>
-                          <TableHead className="font-bold text-right">Actions</TableHead>
+                          <TableHead className="text-right font-bold">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
