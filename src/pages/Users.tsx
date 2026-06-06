@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -215,7 +215,8 @@ const Users = () => {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            <Card className="xl:col-span-1 h-fit shadow-lg border-indigo-100">
+            {/* Adding a key to the Card forces a re-mount when switching between users or modes */}
+            <Card key={editingId || 'new-user'} className="xl:col-span-1 h-fit shadow-lg border-indigo-100">
               <CardHeader className="bg-indigo-50/30 border-b">
                 <CardTitle className="flex items-center gap-2 text-indigo-700">
                   {editingId ? <Pencil className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
