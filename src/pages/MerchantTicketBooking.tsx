@@ -41,6 +41,7 @@ import {
   Ticket,
   User,
   Users,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 
 const API_URL = "http://localhost:5000/api";
@@ -56,6 +57,8 @@ const MerchantTicketBooking = () => {
   const { serviceId } = useParams();
   const navigate = useNavigate();
   const [bookingCounts, setBookingCounts] = useState<BookingState>({});
+  const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedTimeslotId, setSelectedTimeslotId] = useState<string>("");
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     phone: "",
@@ -154,6 +157,9 @@ const MerchantTicketBooking = () => {
     if (!customerInfo.name || !customerInfo.phone) {
       return showError("Please fill customer details");
     }
+    if (!selectedTimeslotId) {
+      return showError("Please select a timeslot");
+    }
 
     const selectedCategories = Object.entries(bookingCounts)
       .filter(([_, counts]) => counts.adult > 0 || counts.child > 0)
@@ -171,6 +177,8 @@ const MerchantTicketBooking = () => {
       payment_mode: customerInfo.payment_mode,
       merchant_id: service.merchant_id,
       merchant_service_id: parseInt(serviceId!),
+      ticket_timeslot_id: parseInt(selectedTimeslotId),
+      booking_date: bookingDate,
       categories: selectedCategories,
       update_by: 1,
     });
@@ -293,9 +301,6 @@ const MerchantTicketBooking = () => {
                 {categories?.map((category: any) => {
                   const counts = bookingCounts[category.id] ||
                     { adult: 0, child: 0 };
-                  const timeslot = timeslots?.find((t: any) =>
-                    t.id === category.id
-                  );
                   return (
                     <Card
                       key={category.id}
@@ -346,29 +351,39 @@ const MerchantTicketBooking = () => {
 
                           {/* Right Section */}
                           <div className="lg:w-[380px] border-t lg:border-l lg:border-t-0 bg-slate-50 p-6">
-                            {/* Timeslot */}
-                            <div className="mb-5">
-                              <Label className="text-xs font-semibold text-slate-500 uppercase">
-                                Select Timeslot
-                              </Label>
-
-                              <Select>
-                                <SelectTrigger className="mt-2 bg-white">
-                                  <SelectValue placeholder="Choose Timeslot" />
-                                </SelectTrigger>
-
-                                <SelectContent>
-                                  {timeslots?.map((timeslot: any) => (
-                                    <SelectItem
-                                      key={timeslot.id}
-                                      value={timeslot.id.toString()}
-                                    >
-                                      {timeslot.name} • {timeslot.start} -{" "}
-                                      {timeslot.end}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                            {/* Date & Timeslot Selection */}
+                            <div className="grid grid-cols-2 gap-3 mb-5">
+                              <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                                  <CalendarIcon className="h-3 w-3" /> Visit Date
+                                </Label>
+                                <Input 
+                                  type="date" 
+                                  value={bookingDate} 
+                                  onChange={(e) => setBookingDate(e.target.value)}
+                                  className="bg-white h-10 text-xs"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                                  <Clock className="h-3 w-3" /> Timeslot
+                                </Label>
+                                <Select value={selectedTimeslotId} onValueChange={setSelectedTimeslotId}>
+                                  <SelectTrigger className="bg-white h-10 text-xs">
+                                    <SelectValue placeholder="Slot" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {timeslots?.map((timeslot: any) => (
+                                      <SelectItem
+                                        key={timeslot.id}
+                                        value={timeslot.id.toString()}
+                                      >
+                                        {timeslot.name} ({timeslot.start})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
 
                             {/* Quantity Controls */}
@@ -475,6 +490,13 @@ const MerchantTicketBooking = () => {
                     )
                     : (
                       <div className="space-y-4">
+                        <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 mb-4">
+                          <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase mb-1">
+                            <CalendarIcon className="h-3 w-3" /> Booking Date
+                          </div>
+                          <p className="text-sm font-bold text-slate-900">{bookingDate}</p>
+                        </div>
+
                         {Object.entries(bookingCounts).map(
                           ([catId, counts]) => {
                             if (counts.adult === 0 && counts.child === 0) {
