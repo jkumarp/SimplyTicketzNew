@@ -46,14 +46,16 @@ import {
 
 const API_URL = "http://localhost:5000/api";
 
-interface BookingState {
+interface CategoryBooking {
+  adult: number;
+  child: number;
   bookingDate: string;
-  selectedTimeslotId: string;
+  timeslotId: string;
+}
+
+interface BookingState {
   counts: {
-    [categoryId: string]: {
-      adult: number;
-      child: number;
-    };
+    [categoryId: string]: CategoryBooking;
   };
 }
 
@@ -62,8 +64,6 @@ const MerchantTicketBooking = () => {
   const navigate = useNavigate();
   
   const [bookingState, setBookingState] = useState<BookingState>({
-    bookingDate: new Date().toISOString().split('T')[0],
-    selectedTimeslotId: "",
     counts: {}
   });
 
@@ -115,19 +115,22 @@ const MerchantTicketBooking = () => {
     enabled: !!service?.merchant_id,
   });
 
-  const updateCount = (
+  const updateCategoryData = (
     categoryId: string,
-    type: "adult" | "child",
-    delta: number,
+    updates: Partial<CategoryBooking>
   ) => {
     setBookingState((prev) => {
-      const current = prev.counts[categoryId] || { adult: 0, child: 0 };
-      const newValue = Math.max(0, current[type] + delta);
+      const current = prev.counts[categoryId] || { 
+        adult: 0, 
+        child: 0, 
+        bookingDate: new Date().toISOString().split('T')[0],
+        timeslotId: ""
+      };
       return { 
         ...prev, 
         counts: {
           ...prev.counts,
-          [categoryId]: { ...current, [type]: newValue }
+          [categoryId]: { ...current, ...updates }
         }
       };
     });
@@ -137,12 +140,12 @@ const MerchantTicketBooking = () => {
     let total = 0;
     let count = 0;
     if (!categories) return { total, count };
-    Object.entries(bookingState.counts).forEach(([catId, counts]) => {
+    Object.entries(bookingState.counts).forEach(([catId, data]) => {
       const category = categories.find((c: any) => c.id.toString() === catId);
       if (category) {
-        total += counts.adult * parseFloat(category.adult_price);
-        total += counts.child * (parseFloat(category.child_price) || 0);
-        count += counts.adult + counts.child;
+        total += data.adult * parseFloat(category.adult_price);
+        total += data.child * (parseFloat(category.child_price) || 0);
+        count += data.adult + data.child;
       }
     });
     return { total, count };
@@ -160,7 +163,8 @@ const MerchantTicketBooking = () => {
     },
     onSuccess: (data) => {
       showSuccess("Booking confirmed!");
-      navigate(`/merchant/print/${data.data.ticket.id}`);
+      // Navigate to the first ticket's print page
+      navigate(`/merchant/print/${data.data[0].ticket.id}`);
     },
     onError: (err: any) => showError(err.message),
   });
@@ -171,31 +175,37 @@ const MerchantTicketBooking = () => {
     if (!customerInfo.name || !customerInfo.phone) {
       return showError("Please fill customer details");
     }
-    if (!bookingState.selectedTimeslotId) {
-      return showError("Please select a timeslot");
-    }
 
     const selectedCategories = Object.entries(bookingState.counts)
-      .filter(([_, counts]) => counts.adult > 0 || counts.child > 0)
-      .map(([catId, counts]) => ({
-        ticket_category_id: parseInt(catId),
-        adult_count: counts.adult,
-        child_count: counts.child,
-      }));
+      .filter(([_, data]) => data.adult > 0 || data.child > 0)
+      .map(([catId, data]) => {
+        if (!data.timeslotId) {
+          throw new Error(`Please select a timeslot for all selected categories`);
+        }
+        return {
+          ticket_category_id: parseInt(catId),
+          adult_count: data.adult,
+          child_count: data.child,
+          booking_date: data.bookingDate,
+          ticket_timeslot_id: parseInt(data.timeslotId)
+        };
+      });
 
-    bookingMutation.mutate({
-      customer_name: customerInfo.name,
-      customer_phone: customerInfo.phone,
-      customer_phone_code: 91,
-      email: customerInfo.email,
-      payment_mode: customerInfo.payment_mode,
-      merchant_id: service.merchant_id,
-      merchant_service_id: parseInt(serviceId!),
-      ticket_timeslot_id: parseInt(bookingState.selectedTimeslotId),
-      booking_date: bookingState.bookingDate,
-      categories: selectedCategories,
-      update_by: 1,
-    });
+    try {
+      bookingMutation.mutate({
+        customer_name: customerInfo.name,
+        customer_phone: customerInfo.phone,
+        customer_phone_code: 91,
+        email: customerInfo.email,
+        payment_mode: customerInfo.payment_mode,
+        merchant_id: service.merchant_id,
+        merchant_service_id: parseInt(serviceId!),
+        categories: selectedCategories,
+        update_by: 1,
+      });
+    } catch (err: any) {
+      showError(err.message);
+    }
   };
 
   if (isLoadingService || isLoadingCategories) {
@@ -313,8 +323,12 @@ const MerchantTicketBooking = () => {
                   Select Categories
                 </h3>
                 {categories?.map((category: any) => {
-                  const counts = bookingState.counts[category.id] ||
-                    { adult: 0, child: 0 };
+                  const data = bookingState.counts[category.id] || { 
+                    adult: 0, 
+                    child: 0, 
+                    bookingDate: new Date().toISOString().split('T')[0],
+                    timeslotId: ""
+                  };
                   return (
                     <Card
                       key={category.id}
@@ -329,13 +343,10 @@ const MerchantTicketBooking = () => {
                                 <h4 className="text-xl font-bold text-slate-900">
                                   {category.name}
                                 </h4>
-
                                 <p className="text-sm text-slate-500 mt-1">
-                                  {category.special_instruction ||
-                                    "No special instructions"}
+                                  {category.special_instruction || "No special instructions"}
                                 </p>
                               </div>
-
                               <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
                                 Available
                               </Badge>
@@ -344,38 +355,26 @@ const MerchantTicketBooking = () => {
                             {/* Pricing */}
                             <div className="grid grid-cols-2 gap-3 mt-5">
                               <div className="rounded-xl bg-gradient-to-r from-indigo-50 to-indigo-100 p-4 border border-indigo-100">
-                                <p className="text-xs uppercase font-semibold text-slate-500">
-                                  Adult Ticket
-                                </p>
-                                <p className="text-2xl font-bold text-indigo-700">
-                                  ₹{category.adult_price}
-                                </p>
+                                <p className="text-xs uppercase font-semibold text-slate-500">Adult</p>
+                                <p className="text-2xl font-bold text-indigo-700">₹{category.adult_price}</p>
                               </div>
-
                               <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100 p-4 border border-emerald-100">
-                                <p className="text-xs uppercase font-semibold text-slate-500">
-                                  Child Ticket
-                                </p>
-                                <p className="text-2xl font-bold text-emerald-700">
-                                  ₹{category.child_price || "0.00"}
-                                </p>
+                                <p className="text-xs uppercase font-semibold text-slate-500">Child</p>
+                                <p className="text-2xl font-bold text-emerald-700">₹{category.child_price || "0.00"}</p>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Right Section */}
-                          <div className="lg:w-[380px] border-t lg:border-l lg:border-t-0 bg-slate-50 p-6">
-                            {/* Date & Timeslot Selection */}
-                            <div className="grid grid-cols-2 gap-3 mb-5">
+                            {/* Per-Category Schedule */}
+                            <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-100">
                               <div className="space-y-2">
                                 <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
                                   <CalendarIcon className="h-3 w-3" /> Visit Date
                                 </Label>
                                 <Input 
                                   type="date" 
-                                  value={bookingState.bookingDate} 
-                                  onChange={(e) => setBookingState(prev => ({ ...prev, bookingDate: e.target.value }))}
-                                  className="bg-white h-10 text-xs"
+                                  value={data.bookingDate} 
+                                  onChange={(e) => updateCategoryData(category.id, { bookingDate: e.target.value })}
+                                  className="h-10 text-xs"
                                 />
                               </div>
                               <div className="space-y-2">
@@ -383,102 +382,69 @@ const MerchantTicketBooking = () => {
                                   <Clock className="h-3 w-3" /> Timeslot
                                 </Label>
                                 <Select 
-                                  value={bookingState.selectedTimeslotId} 
-                                  onValueChange={(v) => setBookingState(prev => ({ ...prev, selectedTimeslotId: v }))}
+                                  value={data.timeslotId} 
+                                  onValueChange={(v) => updateCategoryData(category.id, { timeslotId: v })}
                                 >
-                                  <SelectTrigger className="bg-white h-10 text-xs">
-                                    <SelectValue placeholder="Slot" />
+                                  <SelectTrigger className="h-10 text-xs">
+                                    <SelectValue placeholder="Select Slot" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {timeslots?.map((timeslot: any) => (
-                                      <SelectItem
-                                        key={timeslot.id}
-                                        value={timeslot.id.toString()}
-                                      >
-                                        {timeslot.name} ({timeslot.start})
+                                    {timeslots?.map((ts: any) => (
+                                      <SelectItem key={ts.id} value={ts.id.toString()}>
+                                        {ts.name} ({ts.start})
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
                               </div>
                             </div>
+                          </div>
 
-                            {/* Quantity Controls */}
-                            <div className="space-y-4">
-                              {/* Adult */}
-                              <div className="flex items-center justify-between rounded-xl border bg-white p-3">
-                                <div>
-                                  <p className="font-semibold text-slate-800">
-                                    Adult
-                                  </p>
-                                  <p className="text-xs text-slate-500">
-                                    Full Price Ticket
-                                  </p>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="rounded-full"
-                                    disabled={counts.adult === 0}
-                                    onClick={() =>
-                                      updateCount(category.id, "adult", -1)}
-                                  >
-                                    <Minus className="h-4 w-4" />
-                                  </Button>
-
-                                  <span className="w-8 text-center font-bold text-lg">
-                                    {counts.adult}
-                                  </span>
-
-                                  <Button
-                                    size="icon"
-                                    className="rounded-full bg-indigo-600 hover:bg-indigo-700"
-                                    onClick={() =>
-                                      updateCount(category.id, "adult", 1)}
-                                  >
-                                    <Plus className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                          {/* Right Section: Quantity Controls */}
+                          <div className="lg:w-[240px] border-t lg:border-l lg:border-t-0 bg-slate-50 p-6 flex flex-col justify-center gap-4">
+                            <div className="flex items-center justify-between rounded-xl border bg-white p-3">
+                              <span className="text-xs font-bold text-slate-600">Adult</span>
+                              <div className="flex items-center gap-3">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-full"
+                                  disabled={data.adult === 0}
+                                  onClick={() => updateCategoryData(category.id, { adult: Math.max(0, data.adult - 1) })}
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-4 text-center font-bold text-sm">{data.adult}</span>
+                                <Button
+                                  size="icon"
+                                  className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700"
+                                  onClick={() => updateCategoryData(category.id, { adult: data.adult + 1 })}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
                               </div>
+                            </div>
 
-                              {/* Child */}
-                              <div className="flex items-center justify-between rounded-xl border bg-white p-3">
-                                <div>
-                                  <p className="font-semibold text-slate-800">
-                                    Child
-                                  </p>
-                                  <p className="text-xs text-slate-500">
-                                    Discounted Ticket
-                                  </p>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="rounded-full"
-                                    disabled={counts.child === 0}
-                                    onClick={() =>
-                                      updateCount(category.id, "child", -1)}
-                                  >
-                                    <Minus className="h-4 w-4" />
-                                  </Button>
-
-                                  <span className="w-8 text-center font-bold text-lg">
-                                    {counts.child}
-                                  </span>
-
-                                  <Button
-                                    size="icon"
-                                    className="rounded-full bg-indigo-600 hover:bg-indigo-700"
-                                    onClick={() =>
-                                      updateCount(category.id, "child", 1)}
-                                  >
-                                    <Plus className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                            <div className="flex items-center justify-between rounded-xl border bg-white p-3">
+                              <span className="text-xs font-bold text-slate-600">Child</span>
+                              <div className="flex items-center gap-3">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-full"
+                                  disabled={data.child === 0}
+                                  onClick={() => updateCategoryData(category.id, { child: Math.max(0, data.child - 1) })}
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-4 text-center font-bold text-sm">{data.child}</span>
+                                <Button
+                                  size="icon"
+                                  className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700"
+                                  onClick={() => updateCategoryData(category.id, { child: data.child + 1 })}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
                               </div>
                             </div>
                           </div>
@@ -507,39 +473,24 @@ const MerchantTicketBooking = () => {
                     )
                     : (
                       <div className="space-y-4">
-                        <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 mb-4">
-                          <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase mb-1">
-                            <CalendarIcon className="h-3 w-3" /> Booking Date
-                          </div>
-                          <p className="text-sm font-bold text-slate-900">{bookingState.bookingDate}</p>
-                        </div>
-
                         {Object.entries(bookingState.counts).map(
-                          ([catId, counts]) => {
-                            if (counts.adult === 0 && counts.child === 0) {
-                              return null;
-                            }
-                            const cat = categories.find((c: any) =>
-                              c.id.toString() === catId
-                            );
+                          ([catId, data]) => {
+                            if (data.adult === 0 && data.child === 0) return null;
+                            const cat = categories.find((c: any) => c.id.toString() === catId);
+                            const ts = timeslots?.find((t: any) => t.id.toString() === data.timeslotId);
                             return (
-                              <div
-                                key={catId}
-                                className="flex justify-between text-sm"
-                              >
-                                <div>
-                                  <p className="font-bold">{cat.name}</p>
-                                  <p className="text-xs text-slate-500">
-                                    {counts.adult}A, {counts.child}C
-                                  </p>
+                              <div key={catId} className="p-3 rounded-lg bg-slate-50 border border-slate-100 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="font-bold">{cat.name}</span>
+                                  <span className="font-medium">
+                                    ₹{(data.adult * parseFloat(cat.adult_price) + data.child * (parseFloat(cat.child_price) || 0)).toFixed(2)}
+                                  </span>
                                 </div>
-                                <span className="font-medium">
-                                  &#8377;{(counts.adult *
-                                      parseFloat(cat.adult_price) +
-                                    counts.child *
-                                      (parseFloat(cat.child_price) || 0))
-                                    .toFixed(2)}
-                                </span>
+                                <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium">
+                                  <span className="flex items-center gap-1"><CalendarIcon className="h-2.5 w-2.5" /> {data.bookingDate}</span>
+                                  <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {ts?.name || 'No Slot'}</span>
+                                </div>
+                                <p className="text-[10px] text-slate-400">{data.adult} Adults, {data.child} Children</p>
                               </div>
                             );
                           },
@@ -552,7 +503,7 @@ const MerchantTicketBooking = () => {
                         <div className="flex justify-between items-center">
                           <span className="text-slate-600">Total Amount</span>
                           <span className="text-2xl font-black text-indigo-600">
-                          &#8377;{total.toFixed(2)}
+                          ₹{total.toFixed(2)}
                           </span>
                         </div>
                       </div>
