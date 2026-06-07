@@ -12,6 +12,7 @@ import merchantDeviceRoutes from './routes/merchantDeviceRoutes';
 import ticketRoutes from './routes/ticketRoutes';
 import ticketDetailRoutes from './routes/ticketDetailRoutes';
 import invoiceRoutes from './routes/invoiceRoutes';
+import invoiceDetailRoutes from './routes/invoiceDetailRoutes';
 import documentRoutes from './routes/documentRoutes';
 import countryRoutes from './routes/countryRoutes';
 import stateRoutes from './routes/stateRoutes';
@@ -51,6 +52,7 @@ app.use('/api', authorizeRoles(1,2,3,4,5), merchantDeviceRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), ticketRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), ticketDetailRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), invoiceRoutes);
+app.use('/api', authorizeRoles(1,2,3,4,5), invoiceDetailRoutes);
 app.use('/api', authorizeRoles(1, 2), userRoutes);
 
 
