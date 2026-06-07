@@ -134,7 +134,8 @@ export const updateTicket = async (
 };
 
 /**
- * bookTicket: Creates a ticket and its associated details in one flow
+ * bookTicket: Creates tickets and their associated details.
+ * Now supports separate booking_date and ticket_timeslot_id for each category.
  */
 export const bookTicket = async (
   req: Request,
@@ -145,12 +146,10 @@ export const bookTicket = async (
     customer_phone_code,
     merchant_id,
     merchant_service_id,
-    ticket_timeslot_id,
-    booking_date,
     email,
     customer_name,
     payment_mode,
-    categories, // Array of { ticket_category_id, adult_count, child_count }
+    categories, // Array of { ticket_category_id, adult_count, child_count, booking_date, ticket_timeslot_id }
     update_by,
   } = req.body;
 
@@ -171,53 +170,50 @@ export const bookTicket = async (
     }
 
     const isSingleQr = serviceData?.single_qr_sw ?? true;
+    const createdTickets = [];
 
-    // 1. Create the Ticket Header
-    const { data: ticketData, error: ticketError } = await supabase
-      .schema("transaction")
-      .from("ticket")
-      .insert([{
-        customer_phone,
-        customer_phone_code,
-        merchant_id,
-        merchant_service_id,
-        ticket_timeslot_id,
-        booking_date: booking_date || new Date().toISOString(),
-        email,
-        customer_name,
-        payment_mode,
-        update_by,
-        update_date: new Date().toISOString(),
-        status: "CONFIRMED",
-      }])
-      .select();
+    // Process each category as a separate ticket header
+    for (const cat of categories) {
+      // 1. Create the Ticket Header for this category
+      const { data: ticketData, error: ticketError } = await supabase
+        .schema("transaction")
+        .from("ticket")
+        .insert([{
+          customer_phone,
+          customer_phone_code,
+          merchant_id,
+          merchant_service_id,
+          ticket_category_id: cat.ticket_category_id,
+          ticket_timeslot_id: cat.ticket_timeslot_id,
+          booking_date: cat.booking_date || new Date().toISOString(),
+          email,
+          customer_name,
+          payment_mode,
+          update_by,
+          update_date: new Date().toISOString(),
+          status: "CONFIRMED",
+        }])
+        .select();
 
-    if (ticketError) {
-      res.status(400).json({ error: ticketError.message });
-      return;
-    }
+      if (ticketError) throw ticketError;
 
-    const ticketId = ticketData[0].id;
+      const ticketId = ticketData[0].id;
+      let detailsToInsert: any[] = [];
 
-    // 2. Prepare Ticket Details
-    let detailsToInsert: any[] = [];
-
-    if (isSingleQr) {
-      // One record per category (standard behavior)
-      detailsToInsert = categories.map((cat: any) => ({
-        ticket_id: ticketId,
-        ticket_category_id: cat.ticket_category_id,
-        qr_code_string: `TKT-${ticketId}-${cat.ticket_category_id}-${Date.now()}`,
-        scanned_sw: false,
-        adult_count: cat.adult_count || 0,
-        child_count: cat.child_count || 0,
-        update_by,
-        update_date: new Date().toISOString(),
-      }));
-    } else {
-      // Individual records for each person (when single_qr_sw is FALSE)
-      categories.forEach((cat: any) => {
-        // Create individual records for Adults
+      if (isSingleQr) {
+        // One record for this category
+        detailsToInsert.push({
+          ticket_id: ticketId,
+          ticket_category_id: cat.ticket_category_id,
+          qr_code_string: `TKT-${ticketId}-${cat.ticket_category_id}-${Date.now()}`,
+          scanned_sw: false,
+          adult_count: cat.adult_count || 0,
+          child_count: cat.child_count || 0,
+          update_by,
+          update_date: new Date().toISOString(),
+        });
+      } else {
+        // Individual records for each person
         for (let i = 0; i < (cat.adult_count || 0); i++) {
           detailsToInsert.push({
             ticket_id: ticketId,
@@ -230,7 +226,6 @@ export const bookTicket = async (
             update_date: new Date().toISOString(),
           });
         }
-        // Create individual records for Children
         for (let i = 0; i < (cat.child_count || 0); i++) {
           detailsToInsert.push({
             ticket_id: ticketId,
@@ -243,38 +238,27 @@ export const bookTicket = async (
             update_date: new Date().toISOString(),
           });
         }
-      });
-    }
-
-    // 3. Insert Ticket Details
-    if (detailsToInsert.length > 0) {
-      const { data: detailsData, error: detailsError } = await supabase
-        .schema("transaction")
-        .from("ticket_detail")
-        .insert(detailsToInsert)
-        .select();
-
-      if (detailsError) {
-        res.status(400).json({ error: detailsError.message });
-        return;
       }
 
-      res.status(201).json({
-        success: true,
-        message: "Ticket booked successfully",
-        data: {
-          ticket: ticketData[0],
-          details: detailsData,
-        },
-      });
-    } else {
-      res.status(201).json({
-        success: true,
-        message: "Ticket header created, but no details were provided",
-        data: { ticket: ticketData[0], details: [] },
-      });
+      // 3. Insert Ticket Details
+      if (detailsToInsert.length > 0) {
+        const { data: detailsData, error: detailsError } = await supabase
+          .schema("transaction")
+          .from("ticket_detail")
+          .insert(detailsToInsert)
+          .select();
+
+        if (detailsError) throw detailsError;
+        createdTickets.push({ ticket: ticketData[0], details: detailsData });
+      }
     }
-  } catch (err) {
-    res.status(500).json({ error: "Internal Server Error" });
+
+    res.status(201).json({
+      success: true,
+      message: "Tickets booked successfully",
+      data: createdTickets,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Internal Server Error" });
   }
 };
