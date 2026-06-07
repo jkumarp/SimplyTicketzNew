@@ -5,6 +5,7 @@ export const createTicketTimeslot = async (req: Request, res: Response): Promise
   try {
     const {
       merchant_id,
+      merchant_service_id,
       ticket_category_id,
       name,
       start,
@@ -20,6 +21,7 @@ export const createTicketTimeslot = async (req: Request, res: Response): Promise
       .insert([{
         merchant_id,
         ticket_category_id,
+        merchant_service_id,
         name,
         start,
         end,
@@ -80,6 +82,32 @@ export const getTicketTimeslots = async (req: Request, res: Response): Promise<v
     
     if (merchantId) {
       query = query.eq('merchant_id', merchantId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
+export const getTicketTimeslotsByService = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { serviceId } = req.query;
+    let query = supabase.schema('master').from('ticket_timeslot').select('*');
+    
+    if (serviceId) {
+      query = query.eq('merchant_service_id', serviceId);
     }
 
     const { data, error } = await query;

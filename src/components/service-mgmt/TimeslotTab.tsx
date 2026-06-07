@@ -95,7 +95,7 @@ const TimeslotTab = ({ serviceId }: TimeslotTabProps) => {
     queryKey: ['ticket-timeslots', service?.merchant_id],
     queryFn: async () => {
       if (!service?.merchant_id) return [];
-      const res = await fetch(`${API_URL}/ticket-timeslots?merchantId=${service.merchant_id}`, { headers: getAuthHeader() });
+      const res = await fetch(`${API_URL}/ticket-timeslots-by-service?serviceId=${serviceId}`, { headers: getAuthHeader() });
       return (await res.json()).data;
     },
     enabled: !!service?.merchant_id
@@ -106,6 +106,7 @@ const TimeslotTab = ({ serviceId }: TimeslotTabProps) => {
       const payload = { 
         ...data, 
         merchant_id: parseInt(data.merchant_id),
+        merchant_service_id:serviceId,
         ticket_category_id: data.ticket_category_id ? parseInt(data.ticket_category_id) : null,
         total_ticket_count: data.total_ticket_count ? parseInt(data.total_ticket_count) : null,
         update_by: 1 
