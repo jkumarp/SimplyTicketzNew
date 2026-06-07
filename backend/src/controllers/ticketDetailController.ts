@@ -34,6 +34,7 @@ export const createTicketDetail = async (req: Request, res: Response): Promise<v
     const {
       ticket_id,
       ticket_category_id,
+      ticket_number,
       qr_code_string,
       scanned_sw,
       scanned_time,
@@ -48,6 +49,7 @@ export const createTicketDetail = async (req: Request, res: Response): Promise<v
       .insert([{
         ticket_id,
         ticket_category_id,
+        ticket_number,
         qr_code_string,
         scanned_sw: scanned_sw || false,
         scanned_time,
