@@ -11,6 +11,7 @@ import ticketCategoryRoutes from './routes/ticketCategoryRoutes';
 import merchantDeviceRoutes from './routes/merchantDeviceRoutes';
 import ticketRoutes from './routes/ticketRoutes';
 import ticketDetailRoutes from './routes/ticketDetailRoutes';
+import invoiceRoutes from './routes/invoiceRoutes';
 import documentRoutes from './routes/documentRoutes';
 import countryRoutes from './routes/countryRoutes';
 import stateRoutes from './routes/stateRoutes';
@@ -43,14 +44,13 @@ app.post('/api/logout', signOutUser);
 // Mount Protected Routes
 app.use('/api', authorizeRoles(1,2,3,4,5), merchantRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), merchantServicesRoutes);
-
-
 app.use('/api', authorizeRoles(1,2,3,4,5), merchantSubscriptionRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), ticketTimeslotRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), ticketCategoryRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), merchantDeviceRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), ticketRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), ticketDetailRoutes);
+app.use('/api', authorizeRoles(1,2,3,4,5), invoiceRoutes);
 app.use('/api', authorizeRoles(1, 2), userRoutes);
 
 
