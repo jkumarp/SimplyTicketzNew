@@ -47,18 +47,26 @@ import {
 const API_URL = "http://localhost:5000/api";
 
 interface BookingState {
-  [categoryId: string]: {
-    adult: number;
-    child: number;
+  bookingDate: string;
+  selectedTimeslotId: string;
+  counts: {
+    [categoryId: string]: {
+      adult: number;
+      child: number;
+    };
   };
 }
 
 const MerchantTicketBooking = () => {
   const { serviceId } = useParams();
   const navigate = useNavigate();
-  const [bookingCounts, setBookingCounts] = useState<BookingState>({});
-  const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedTimeslotId, setSelectedTimeslotId] = useState<string>("");
+  
+  const [bookingState, setBookingState] = useState<BookingState>({
+    bookingDate: new Date().toISOString().split('T')[0],
+    selectedTimeslotId: "",
+    counts: {}
+  });
+
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     phone: "",
@@ -112,10 +120,16 @@ const MerchantTicketBooking = () => {
     type: "adult" | "child",
     delta: number,
   ) => {
-    setBookingCounts((prev) => {
-      const current = prev[categoryId] || { adult: 0, child: 0 };
+    setBookingState((prev) => {
+      const current = prev.counts[categoryId] || { adult: 0, child: 0 };
       const newValue = Math.max(0, current[type] + delta);
-      return { ...prev, [categoryId]: { ...current, [type]: newValue } };
+      return { 
+        ...prev, 
+        counts: {
+          ...prev.counts,
+          [categoryId]: { ...current, [type]: newValue }
+        }
+      };
     });
   };
 
@@ -123,7 +137,7 @@ const MerchantTicketBooking = () => {
     let total = 0;
     let count = 0;
     if (!categories) return { total, count };
-    Object.entries(bookingCounts).forEach(([catId, counts]) => {
+    Object.entries(bookingState.counts).forEach(([catId, counts]) => {
       const category = categories.find((c: any) => c.id.toString() === catId);
       if (category) {
         total += counts.adult * parseFloat(category.adult_price);
@@ -157,11 +171,11 @@ const MerchantTicketBooking = () => {
     if (!customerInfo.name || !customerInfo.phone) {
       return showError("Please fill customer details");
     }
-    if (!selectedTimeslotId) {
+    if (!bookingState.selectedTimeslotId) {
       return showError("Please select a timeslot");
     }
 
-    const selectedCategories = Object.entries(bookingCounts)
+    const selectedCategories = Object.entries(bookingState.counts)
       .filter(([_, counts]) => counts.adult > 0 || counts.child > 0)
       .map(([catId, counts]) => ({
         ticket_category_id: parseInt(catId),
@@ -177,8 +191,8 @@ const MerchantTicketBooking = () => {
       payment_mode: customerInfo.payment_mode,
       merchant_id: service.merchant_id,
       merchant_service_id: parseInt(serviceId!),
-      ticket_timeslot_id: parseInt(selectedTimeslotId),
-      booking_date: bookingDate,
+      ticket_timeslot_id: parseInt(bookingState.selectedTimeslotId),
+      booking_date: bookingState.bookingDate,
       categories: selectedCategories,
       update_by: 1,
     });
@@ -299,7 +313,7 @@ const MerchantTicketBooking = () => {
                   Select Categories
                 </h3>
                 {categories?.map((category: any) => {
-                  const counts = bookingCounts[category.id] ||
+                  const counts = bookingState.counts[category.id] ||
                     { adult: 0, child: 0 };
                   return (
                     <Card
@@ -359,8 +373,8 @@ const MerchantTicketBooking = () => {
                                 </Label>
                                 <Input 
                                   type="date" 
-                                  value={bookingDate} 
-                                  onChange={(e) => setBookingDate(e.target.value)}
+                                  value={bookingState.bookingDate} 
+                                  onChange={(e) => setBookingState(prev => ({ ...prev, bookingDate: e.target.value }))}
                                   className="bg-white h-10 text-xs"
                                 />
                               </div>
@@ -368,7 +382,10 @@ const MerchantTicketBooking = () => {
                                 <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
                                   <Clock className="h-3 w-3" /> Timeslot
                                 </Label>
-                                <Select value={selectedTimeslotId} onValueChange={setSelectedTimeslotId}>
+                                <Select 
+                                  value={bookingState.selectedTimeslotId} 
+                                  onValueChange={(v) => setBookingState(prev => ({ ...prev, selectedTimeslotId: v }))}
+                                >
                                   <SelectTrigger className="bg-white h-10 text-xs">
                                     <SelectValue placeholder="Slot" />
                                   </SelectTrigger>
@@ -494,10 +511,10 @@ const MerchantTicketBooking = () => {
                           <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase mb-1">
                             <CalendarIcon className="h-3 w-3" /> Booking Date
                           </div>
-                          <p className="text-sm font-bold text-slate-900">{bookingDate}</p>
+                          <p className="text-sm font-bold text-slate-900">{bookingState.bookingDate}</p>
                         </div>
 
-                        {Object.entries(bookingCounts).map(
+                        {Object.entries(bookingState.counts).map(
                           ([catId, counts]) => {
                             if (counts.adult === 0 && counts.child === 0) {
                               return null;
