@@ -145,8 +145,6 @@ export const bookTicket = async (
     customer_phone_code,
     merchant_id,
     merchant_service_id,
-    ticket_category_id,
-    ticket_timeslot_id,
     booking_date,
     email,
     customer_name,
