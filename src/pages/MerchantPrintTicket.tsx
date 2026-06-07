@@ -75,7 +75,7 @@ const MerchantPrintTicket = () => {
 
       // Fetch timeslots for this merchant
       const tsRes = await fetch(
-        `${API_URL}/ticket-timeslots?ticketCategoryId=${service.merchant_id}`,
+        `${API_URL}/ticket-timeslots?merchantId=${service.merchant_id}`,
         { headers: getAuthHeader() },
       );
       const timeslots = (await tsRes.json()).data;
