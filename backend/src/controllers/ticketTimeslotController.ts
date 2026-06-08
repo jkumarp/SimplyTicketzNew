@@ -125,3 +125,28 @@ export const getTicketTimeslotsByService = async (req: Request, res: Response): 
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
+export const getTicketTimeslotsByCategory = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { categoryId } = req.query;
+    let query = supabase.schema('master').from('ticket_timeslot').select('*');
+    
+    if (categoryId) {
+      query = query.eq('ticket_category_id', categoryId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
