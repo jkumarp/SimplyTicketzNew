@@ -28,6 +28,7 @@ import {
 import { showError, showSuccess } from "@/utils/toast";
 import {
   ArrowLeft,
+  Calendar as CalendarIcon,
   ChevronRight,
   Clock,
   CreditCard,
@@ -41,7 +42,6 @@ import {
   Ticket,
   User,
   Users,
-  Calendar as CalendarIcon,
 } from "lucide-react";
 
 const API_URL = "http://localhost:5000/api";
@@ -62,9 +62,9 @@ interface BookingState {
 const MerchantTicketBooking = () => {
   const { serviceId } = useParams();
   const navigate = useNavigate();
-  
+
   const [bookingState, setBookingState] = useState<BookingState>({
-    counts: {}
+    counts: {},
   });
 
   const [customerInfo, setCustomerInfo] = useState({
@@ -117,21 +117,21 @@ const MerchantTicketBooking = () => {
 
   const updateCategoryData = (
     categoryId: string,
-    updates: Partial<CategoryBooking>
+    updates: Partial<CategoryBooking>,
   ) => {
     setBookingState((prev) => {
-      const current = prev.counts[categoryId] || { 
-        adult: 0, 
-        child: 0, 
-        bookingDate: new Date().toISOString().split('T')[0],
-        timeslotId: ""
+      const current = prev.counts[categoryId] || {
+        adult: 0,
+        child: 0,
+        bookingDate: new Date().toISOString().split("T")[0],
+        timeslotId: "",
       };
-      return { 
-        ...prev, 
+      return {
+        ...prev,
         counts: {
           ...prev.counts,
-          [categoryId]: { ...current, ...updates }
-        }
+          [categoryId]: { ...current, ...updates },
+        },
       };
     });
   };
@@ -180,14 +180,16 @@ const MerchantTicketBooking = () => {
       .filter(([_, data]) => data.adult > 0 || data.child > 0)
       .map(([catId, data]) => {
         if (!data.timeslotId) {
-          throw new Error(`Please select a timeslot for all selected categories`);
+          throw new Error(
+            `Please select a timeslot for all selected categories`,
+          );
         }
         return {
           ticket_category_id: parseInt(catId),
           adult_count: data.adult,
           child_count: data.child,
           booking_date: data.bookingDate,
-          ticket_timeslot_id: parseInt(data.timeslotId)
+          ticket_timeslot_id: parseInt(data.timeslotId),
         };
       });
 
@@ -323,11 +325,11 @@ const MerchantTicketBooking = () => {
                   Select Categories
                 </h3>
                 {categories?.map((category: any) => {
-                  const data = bookingState.counts[category.id] || { 
-                    adult: 0, 
-                    child: 0, 
-                    bookingDate: new Date().toISOString().split('T')[0],
-                    timeslotId: ""
+                  const data = bookingState.counts[category.id] || {
+                    adult: 0,
+                    child: 0,
+                    bookingDate: new Date().toISOString().split("T")[0],
+                    timeslotId: "",
                   };
                   return (
                     <Card
@@ -344,7 +346,8 @@ const MerchantTicketBooking = () => {
                                   {category.name}
                                 </h4>
                                 <p className="text-sm text-slate-500 mt-1">
-                                  {category.special_instruction || "No special instructions"}
+                                  {category.special_instruction ||
+                                    "No special instructions"}
                                 </p>
                               </div>
                               <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
@@ -355,12 +358,20 @@ const MerchantTicketBooking = () => {
                             {/* Pricing */}
                             <div className="grid grid-cols-2 gap-3 mt-5">
                               <div className="rounded-xl bg-gradient-to-r from-indigo-50 to-indigo-100 p-4 border border-indigo-100">
-                                <p className="text-xs uppercase font-semibold text-slate-500">Adult</p>
-                                <p className="text-2xl font-bold text-indigo-700">₹{category.adult_price}</p>
+                                <p className="text-xs uppercase font-semibold text-slate-500">
+                                  Adult
+                                </p>
+                                <p className="text-2xl font-bold text-indigo-700">
+                                  ₹{category.adult_price}
+                                </p>
                               </div>
                               <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100 p-4 border border-emerald-100">
-                                <p className="text-xs uppercase font-semibold text-slate-500">Child</p>
-                                <p className="text-2xl font-bold text-emerald-700">₹{category.child_price || "0.00"}</p>
+                                <p className="text-xs uppercase font-semibold text-slate-500">
+                                  Child
+                                </p>
+                                <p className="text-2xl font-bold text-emerald-700">
+                                  ₹{category.child_price || "0.00"}
+                                </p>
                               </div>
                             </div>
 
@@ -368,12 +379,16 @@ const MerchantTicketBooking = () => {
                             <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-100">
                               <div className="space-y-2">
                                 <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                                  <CalendarIcon className="h-3 w-3" /> Visit Date
+                                  <CalendarIcon className="h-3 w-3" />{" "}
+                                  Visit Date
                                 </Label>
-                                <Input 
-                                  type="date" 
-                                  value={data.bookingDate} 
-                                  onChange={(e) => updateCategoryData(category.id, { bookingDate: e.target.value })}
+                                <Input
+                                  type="date"
+                                  value={data.bookingDate}
+                                  onChange={(e) =>
+                                    updateCategoryData(category.id, {
+                                      bookingDate: e.target.value,
+                                    })}
                                   className="h-10 text-xs"
                                 />
                               </div>
@@ -381,19 +396,29 @@ const MerchantTicketBooking = () => {
                                 <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
                                   <Clock className="h-3 w-3" /> Timeslot
                                 </Label>
-                                <Select 
-                                  value={data.timeslotId} 
-                                  onValueChange={(v) => updateCategoryData(category.id, { timeslotId: v })}
+                                <Select
+                                  value={data.timeslotId}
+                                  onValueChange={(v) =>
+                                    updateCategoryData(category.id, {
+                                      timeslotId: v,
+                                    })}
                                 >
                                   <SelectTrigger className="h-10 text-xs">
                                     <SelectValue placeholder="Select Slot" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {timeslots?.map((ts: any) => (
-                                      <SelectItem key={ts.id} value={ts.id.toString()}>
-                                        {ts.name} ({ts.start})
-                                      </SelectItem>
-                                    ))}
+                                    {timeslots
+                                      ?.filter((ts: any) =>
+                                        ts.ticket_category_id === category.id
+                                      )
+                                      .map((ts: any) => (
+                                        <SelectItem
+                                          key={ts.id}
+                                          value={ts.id.toString()}
+                                        >
+                                          {ts.name} ({ts.start})
+                                        </SelectItem>
+                                      ))}
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -403,22 +428,32 @@ const MerchantTicketBooking = () => {
                           {/* Right Section: Quantity Controls */}
                           <div className="lg:w-[240px] border-t lg:border-l lg:border-t-0 bg-slate-50 p-6 flex flex-col justify-center gap-4">
                             <div className="flex items-center justify-between rounded-xl border bg-white p-3">
-                              <span className="text-xs font-bold text-slate-600">Adult</span>
+                              <span className="text-xs font-bold text-slate-600">
+                                Adult
+                              </span>
                               <div className="flex items-center gap-3">
                                 <Button
                                   variant="outline"
                                   size="icon"
                                   className="h-7 w-7 rounded-full"
                                   disabled={data.adult === 0}
-                                  onClick={() => updateCategoryData(category.id, { adult: Math.max(0, data.adult - 1) })}
+                                  onClick={() =>
+                                    updateCategoryData(category.id, {
+                                      adult: Math.max(0, data.adult - 1),
+                                    })}
                                 >
                                   <Minus className="h-3 w-3" />
                                 </Button>
-                                <span className="w-4 text-center font-bold text-sm">{data.adult}</span>
+                                <span className="w-4 text-center font-bold text-sm">
+                                  {data.adult}
+                                </span>
                                 <Button
                                   size="icon"
                                   className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700"
-                                  onClick={() => updateCategoryData(category.id, { adult: data.adult + 1 })}
+                                  onClick={() =>
+                                    updateCategoryData(category.id, {
+                                      adult: data.adult + 1,
+                                    })}
                                 >
                                   <Plus className="h-3 w-3" />
                                 </Button>
@@ -426,22 +461,32 @@ const MerchantTicketBooking = () => {
                             </div>
 
                             <div className="flex items-center justify-between rounded-xl border bg-white p-3">
-                              <span className="text-xs font-bold text-slate-600">Child</span>
+                              <span className="text-xs font-bold text-slate-600">
+                                Child
+                              </span>
                               <div className="flex items-center gap-3">
                                 <Button
                                   variant="outline"
                                   size="icon"
                                   className="h-7 w-7 rounded-full"
                                   disabled={data.child === 0}
-                                  onClick={() => updateCategoryData(category.id, { child: Math.max(0, data.child - 1) })}
+                                  onClick={() =>
+                                    updateCategoryData(category.id, {
+                                      child: Math.max(0, data.child - 1),
+                                    })}
                                 >
                                   <Minus className="h-3 w-3" />
                                 </Button>
-                                <span className="w-4 text-center font-bold text-sm">{data.child}</span>
+                                <span className="w-4 text-center font-bold text-sm">
+                                  {data.child}
+                                </span>
                                 <Button
                                   size="icon"
                                   className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700"
-                                  onClick={() => updateCategoryData(category.id, { child: data.child + 1 })}
+                                  onClick={() =>
+                                    updateCategoryData(category.id, {
+                                      child: data.child + 1,
+                                    })}
                                 >
                                   <Plus className="h-3 w-3" />
                                 </Button>
@@ -475,22 +520,44 @@ const MerchantTicketBooking = () => {
                       <div className="space-y-4">
                         {Object.entries(bookingState.counts).map(
                           ([catId, data]) => {
-                            if (data.adult === 0 && data.child === 0) return null;
-                            const cat = categories.find((c: any) => c.id.toString() === catId);
-                            const ts = timeslots?.find((t: any) => t.id.toString() === data.timeslotId);
+                            if (data.adult === 0 && data.child === 0) {
+                              return null;
+                            }
+                            const cat = categories.find((c: any) =>
+                              c.id.toString() === catId
+                            );
+                            const ts = timeslots?.find((t: any) =>
+                              t.id.toString() === data.timeslotId
+                            );
                             return (
-                              <div key={catId} className="p-3 rounded-lg bg-slate-50 border border-slate-100 space-y-2">
+                              <div
+                                key={catId}
+                                className="p-3 rounded-lg bg-slate-50 border border-slate-100 space-y-2"
+                              >
                                 <div className="flex justify-between text-sm">
                                   <span className="font-bold">{cat.name}</span>
                                   <span className="font-medium">
-                                    ₹{(data.adult * parseFloat(cat.adult_price) + data.child * (parseFloat(cat.child_price) || 0)).toFixed(2)}
+                                    ₹{(data.adult *
+                                        parseFloat(cat.adult_price) +
+                                      data.child *
+                                        (parseFloat(cat.child_price) || 0))
+                                      .toFixed(2)}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium">
-                                  <span className="flex items-center gap-1"><CalendarIcon className="h-2.5 w-2.5" /> {data.bookingDate}</span>
-                                  <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {ts?.name || 'No Slot'}</span>
+                                  <span className="flex items-center gap-1">
+                                    <CalendarIcon className="h-2.5 w-2.5" />
+                                    {" "}
+                                    {data.bookingDate}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-2.5 w-2.5" />{" "}
+                                    {ts?.name || "No Slot"}
+                                  </span>
                                 </div>
-                                <p className="text-[10px] text-slate-400">{data.adult} Adults, {data.child} Children</p>
+                                <p className="text-[10px] text-slate-400">
+                                  {data.adult} Adults, {data.child} Children
+                                </p>
                               </div>
                             );
                           },
@@ -503,7 +570,7 @@ const MerchantTicketBooking = () => {
                         <div className="flex justify-between items-center">
                           <span className="text-slate-600">Total Amount</span>
                           <span className="text-2xl font-black text-indigo-600">
-                          ₹{total.toFixed(2)}
+                            ₹{total.toFixed(2)}
                           </span>
                         </div>
                       </div>

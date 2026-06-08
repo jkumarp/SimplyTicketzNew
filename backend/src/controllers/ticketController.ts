@@ -199,13 +199,22 @@ export const bookTicket = async (
 
       const ticketId = ticketData[0].id;
       let detailsToInsert: any[] = [];
-
+      const dtValue = Date.now();
       if (isSingleQr) {
         // One record for this category
         detailsToInsert.push({
           ticket_id: ticketId,
           ticket_category_id: cat.ticket_category_id,
-          qr_code_string: `TKT-${ticketId}-${cat.ticket_category_id}-${Date.now()}`,
+          ticket_number: `TKT-${ticketId}-${cat.ticket_category_id}-${dtValue}`,
+          qr_code_string: JSON.stringify({
+            msid: merchant_service_id,
+            tid: ticketId,
+            tnbr: `TKT-${ticketId}-${cat.ticket_category_id}-${dtValue}`,
+            ac: cat.adult_count || 0,
+            cc: cat.child_count || 0,
+            dov: cat.booking_date.split("T")[0],
+            tsid: cat.ticket_timeslot_id,
+          }),
           scanned_sw: false,
           adult_count: cat.adult_count || 0,
           child_count: cat.child_count || 0,
@@ -218,7 +227,18 @@ export const bookTicket = async (
           detailsToInsert.push({
             ticket_id: ticketId,
             ticket_category_id: cat.ticket_category_id,
-            qr_code_string: `TKT-${ticketId}-${cat.ticket_category_id}-A-${i}-${Date.now()}`,
+            ticket_number:
+              `TKT-${ticketId}-A-${i}-${cat.ticket_category_id}-${dtValue}`,
+            qr_code_string:
+            JSON.stringify({
+              msid: merchant_service_id,
+              tid: ticketId,
+              tnbr: `TKT-${ticketId}-A-${i}-${cat.ticket_category_id}-${dtValue}`,
+              ac: 1,
+              cc: 0,
+              dov: cat.booking_date.split("T")[0],
+              tsid: cat.ticket_timeslot_id,
+            }),
             scanned_sw: false,
             adult_count: 1,
             child_count: 0,
@@ -230,7 +250,18 @@ export const bookTicket = async (
           detailsToInsert.push({
             ticket_id: ticketId,
             ticket_category_id: cat.ticket_category_id,
-            qr_code_string: `TKT-${ticketId}-${cat.ticket_category_id}-C-${i}-${Date.now()}`,
+            ticket_number:
+              `TKT-${ticketId}-C-${i}-${cat.ticket_category_id}-${dtValue}`,
+            qr_code_string:
+            JSON.stringify({
+              msid: merchant_service_id,
+              tid: ticketId,
+              tnbr: `TKT-${ticketId}-C-${i}-${cat.ticket_category_id}-${dtValue}`,
+              ac: 0,
+              cc: 1,
+              dov: cat.booking_date.split("T")[0],
+              tsid: cat.ticket_timeslot_id,
+            }),
             scanned_sw: false,
             adult_count: 0,
             child_count: 1,
