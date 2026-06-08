@@ -30,7 +30,7 @@ import { showSuccess, showError } from "@/utils/toast";
 import { 
   Briefcase, Loader2, Building2, MapPin, Clock, 
   CreditCard, Pencil, X, QrCode, Palette, Image as ImageIcon,
-  CalendarDays, Globe, Link as LinkIcon
+  CalendarDays, Globe, Link as LinkIcon, ShieldAlert
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -77,6 +77,10 @@ interface ServiceTabProps {
 const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Get user role for restriction
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isRestricted = [4, 5, 6].includes(user.role);
 
   const form = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceSchema),
@@ -370,18 +374,28 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
               </CardContent>
             </Card>
 
-            <Button 
-              type="submit" 
-              disabled={mutation.isPending} 
-              className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-lg font-bold rounded-2xl shadow-lg shadow-indigo-100"
-            >
-              {mutation.isPending ? <Loader2 className="animate-spin" /> : (editingId ? 'Update Service' : 'Create Service')}
-            </Button>
-            {editingId && (
-              <Button variant="outline" className="w-full h-12 rounded-xl" onClick={() => { setEditingId(null); form.reset(); }}>
-                Cancel Editing
+            <div className="space-y-4">
+              <Button 
+                type="submit" 
+                disabled={mutation.isPending || (isRestricted && !editingId)} 
+                className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-lg font-bold rounded-2xl shadow-lg shadow-indigo-100"
+              >
+                {mutation.isPending ? <Loader2 className="animate-spin" /> : (editingId ? 'Update Service' : 'Create Service')}
               </Button>
-            )}
+              
+              {isRestricted && !editingId && (
+                <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 text-xs font-medium">
+                  <ShieldAlert className="h-4 w-4 shrink-0" />
+                  Your account role does not have permission to create new services.
+                </div>
+              )}
+
+              {editingId && (
+                <Button variant="outline" className="w-full h-12 rounded-xl" onClick={() => { setEditingId(null); form.reset(); }}>
+                  Cancel Editing
+                </Button>
+              )}
+            </div>
           </div>
         </form>
       </Form>
