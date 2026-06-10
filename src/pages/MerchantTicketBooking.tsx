@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import SiteMapDialog from "@/components/SiteMapDialog";
 import {
   Card,
   CardContent,
@@ -31,17 +32,12 @@ import {
   Calendar as CalendarIcon,
   ChevronRight,
   Clock,
-  CreditCard,
-  Info,
   Loader2,
-  Mail,
   Minus,
-  Phone,
   Plus,
   ShoppingCart,
   Ticket,
   User,
-  Users,
   Map as MapIcon,
 } from "lucide-react";
 
@@ -164,7 +160,6 @@ const MerchantTicketBooking = () => {
     },
     onSuccess: (data) => {
       showSuccess("Booking confirmed!");
-      // Navigate to the first ticket's print page
       navigate(`/merchant/print/${data.data[0].ticket.id}`);
     },
     onError: (err: any) => showError(err.message),
@@ -260,11 +255,14 @@ const MerchantTicketBooking = () => {
                     <div className="flex items-center gap-2">
                       <User className="h-5 w-5" /> Customer Information
                     </div>
-                    <Link to="/view-site-map">
-                      <Button variant="link" className="text-indigo-600 h-auto p-0 text-xs font-bold flex items-center gap-1">
-                        <MapIcon className="h-3 w-3" /> View Site Map
-                      </Button>
-                    </Link>
+                    <SiteMapDialog 
+                      coordinates={service?.location_coordinates} 
+                      trigger={
+                        <Button variant="link" className="text-indigo-600 h-auto p-0 text-xs font-bold flex items-center gap-1">
+                          <MapIcon className="h-3 w-3" /> View Site Map
+                        </Button>
+                      }
+                    />
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -332,7 +330,9 @@ const MerchantTicketBooking = () => {
                   <Ticket className="h-5 w-5 text-indigo-600" />{" "}
                   Select Categories
                 </h3>
-                <div className="text-sm text-slate-500 mt-1">{service.addressline1 +" "+service.addressline2+ " "+service.state}-{service.pincode}</div>
+                <div className="text-sm text-slate-500 mt-1">
+                  {service.addressline1} {service.addressline2} {service.state} - {service.pincode}
+                </div>
                 {categories?.map((category: any) => {
                   const data = bookingState.counts[category.id] || {
                     adult: 0,
@@ -359,9 +359,19 @@ const MerchantTicketBooking = () => {
                                     "No special instructions"}
                                 </p>
                               </div>
-                              <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
-                                Available
-                              </Badge>
+                              <div className="flex items-center gap-3">
+                                <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                                  Available
+                                </Badge>
+                                <SiteMapDialog 
+                                  coordinates={service?.location_coordinates} 
+                                  trigger={
+                                    <Button variant="link" className="text-indigo-600 h-auto p-0 text-xs font-bold flex items-center gap-1">
+                                      <MapIcon className="h-3 w-3" /> View Site Map
+                                    </Button>
+                                  }
+                                />
+                              </div>
                             </div>
 
                             {/* Pricing */}

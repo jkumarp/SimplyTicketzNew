@@ -2,6 +2,7 @@ import { mappls } from 'mappls-web-maps';
 
 // Instantiate the Mappls class
 const mapplsClassObject = new mappls();
+let isInitialized = false;
 
 interface MapProperties {
   center: [number, number];
@@ -15,8 +16,8 @@ interface LoadObject {
   plugins?: string[];
 }
 
-export function initMapplsMap(containerId: string): void {
-  const accessToken: string = "YOUR_MAPPLS_ACCESS_TOKEN"; //
+export function initMapplsMap(containerId: string, center: [number, number] = [19.6012, 73.7091], zoom: number = 12): void {
+  const accessToken: string = "ycocwnbfdcwbwfyfhnblgiafykhkvlilnlpf"; 
   
   const loadOptions: LoadObject = {
     map: true,
@@ -25,12 +26,10 @@ export function initMapplsMap(containerId: string): void {
     plugins: ['']
   };
 
-  // Initialize the SDK with your access token
-  mapplsClassObject.initialize(accessToken, loadOptions, () => {
-    
+  const startMap = () => {
     const mapProps: MapProperties = {
-      center: [28.633, 77.2194], // [Latitude, Longitude] for Delhi
-      zoom: 4
+      center: center,
+      zoom: zoom
     };
 
     // Render the map inside the targeted HTML Container Element
@@ -41,7 +40,18 @@ export function initMapplsMap(containerId: string): void {
 
     // Handle map load event listeners
     mapInstance.on("load", () => {
-      console.log("Mappls Map fully loaded in TypeScript application!");
+      console.log("Mappls Map loaded at", center);
     });
-  });
+  };
+
+  // Initialize the SDK with your access token if not already done
+  if (!isInitialized) {
+    mapplsClassObject.initialize(accessToken, loadOptions, () => {
+      isInitialized = true;
+      startMap();
+    });
+  } else {
+    // If already initialized, just start the map instance
+    startMap();
+  }
 }
