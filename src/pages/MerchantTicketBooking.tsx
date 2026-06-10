@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -42,6 +42,7 @@ import {
   Ticket,
   User,
   Users,
+  Map as MapIcon,
 } from "lucide-react";
 
 const API_URL = "http://localhost:5000/api";
@@ -255,8 +256,15 @@ const MerchantTicketBooking = () => {
               {/* Customer Details Card */}
               <Card className="shadow-md border-indigo-100">
                 <CardHeader className="bg-indigo-50/30 border-b">
-                  <CardTitle className="text-lg flex items-center gap-2 text-indigo-700">
-                    <User className="h-5 w-5" /> Customer Information
+                  <CardTitle className="text-lg flex items-center justify-between w-full text-indigo-700">
+                    <div className="flex items-center gap-2">
+                      <User className="h-5 w-5" /> Customer Information
+                    </div>
+                    <Link to="/view-site-map">
+                      <Button variant="link" className="text-indigo-600 h-auto p-0 text-xs font-bold flex items-center gap-1">
+                        <MapIcon className="h-3 w-3" /> View Site Map
+                      </Button>
+                    </Link>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -324,6 +332,7 @@ const MerchantTicketBooking = () => {
                   <Ticket className="h-5 w-5 text-indigo-600" />{" "}
                   Select Categories
                 </h3>
+                <div className="text-sm text-slate-500 mt-1">{service.addressline1 +" "+service.addressline2+ " "+service.state}-{service.pincode}</div>
                 {categories?.map((category: any) => {
                   const data = bookingState.counts[category.id] || {
                     adult: 0,
