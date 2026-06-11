@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SiteMapDialog from "@/components/SiteMapDialog";
+import { API_URL } from "@/config";
 import {
   Card,
   CardContent,
@@ -40,8 +41,6 @@ import {
   User,
   Map as MapIcon,
 } from "lucide-react";
-
-const API_URL = "http://localhost:5000/api";
 
 interface CategoryBooking {
   adult: number;

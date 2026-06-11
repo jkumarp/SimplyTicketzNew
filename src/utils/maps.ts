@@ -1,4 +1,5 @@
 import { mappls } from 'mappls-web-maps';
+import { MAPPLS_TOKEN } from '@/config';
 
 // Instantiate the Mappls class
 const mapplsClassObject = new mappls();
@@ -17,8 +18,6 @@ interface LoadObject {
 }
 
 export function initMapplsMap(containerId: string, center: [number, number] = [19.6012, 73.7091], zoom: number = 12): void {
-  const accessToken: string = "ycocwnbfdcwbwfyfhnblgiafykhkvlilnlpf"; 
-  
   const loadOptions: LoadObject = {
     map: true,
     version: '3.0',
@@ -38,20 +37,27 @@ export function initMapplsMap(containerId: string, center: [number, number] = [1
       properties: mapProps
     });
 
-    // Handle map load event listeners
+    // Add a marker at the center once the map is loaded
     mapInstance.on("load", () => {
-      console.log("Mappls Map loaded at", center);
+      // Using the global mappls object for marker creation if available
+      if ((window as any).mappls && (window as any).mappls.Marker) {
+        new (window as any).mappls.Marker({
+          map: mapInstance,
+          position: { lat: center[0], lng: center[1] }
+        });
+      }
     });
   };
 
-  // Initialize the SDK with your access token if not already done
-  if (!isInitialized) {
-    mapplsClassObject.initialize(accessToken, loadOptions, () => {
+  // Initialize the SDK with the token from config
+  if (!isInitialized && MAPPLS_TOKEN) {
+    mapplsClassObject.initialize(MAPPLS_TOKEN, loadOptions, () => {
       isInitialized = true;
       startMap();
     });
-  } else {
-    // If already initialized, just start the map instance
+  } else if (isInitialized) {
     startMap();
+  } else {
+    console.error("Mappls Access Token is missing in environment variables.");
   }
 }
