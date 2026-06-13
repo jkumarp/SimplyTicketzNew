@@ -17,6 +17,7 @@ import documentRoutes from './routes/documentRoutes';
 import countryRoutes from './routes/countryRoutes';
 import stateRoutes from './routes/stateRoutes';
 import userTypeRoutes from './routes/userTypeRoutes';
+import merchantEnquiryRoutes from './routes/merchantEnquiryRoutes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import { authorizeRoles } from './middleware/authMiddleware';
@@ -55,8 +56,8 @@ app.use('/api', authorizeRoles(1,2,3,4,5), invoiceRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), invoiceDetailRoutes);
 app.use('/api', authorizeRoles(1, 2), userRoutes);
 
-
-// Other master data routes
+// Public/Semi-public routes
+app.use('/api', merchantEnquiryRoutes);
 app.use('/api', countryRoutes);
 app.use('/api', stateRoutes);
 app.use('/api', userTypeRoutes);
