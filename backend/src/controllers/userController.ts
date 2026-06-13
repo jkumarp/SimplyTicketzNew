@@ -168,6 +168,48 @@ export const signInUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
+
+export const generateGuestToken = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    const role = 7; // Customer Role
+    const merchant_id ='' ;
+    const jwe = await new jose.CompactEncrypt(
+      new TextEncoder().encode(
+        JSON.stringify({
+          email: email || '',
+          role,
+          merchant_id: merchant_id || ''
+        })
+      )
+    )
+      .setProtectedHeader({
+        alg: 'dir',
+        enc: 'A256GCM'
+      })
+      .encrypt(SECRET);
+
+    res.status(200).json({
+      success: true,
+      token: jwe,
+      user: {
+        email,
+        role,
+        merchant_id
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+};
+
 export const signOutUser = async (req: Request, res: Response): Promise<void> => {
   try {
     await supabase.auth.signOut();
