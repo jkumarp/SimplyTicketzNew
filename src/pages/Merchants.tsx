@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
   Select, 
   SelectContent, 
@@ -22,7 +23,7 @@ import {
   Store, Loader2, Mail, Phone, MapPin, FileText, 
   ShieldCheck, Building2, Upload, CheckCircle2, 
   CreditCard, ClipboardCheck, Pencil, X, Eye,
-  Briefcase, Globe, FileCheck
+  Briefcase, Globe, FileCheck, User
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -44,6 +45,7 @@ const Merchants = () => {
   });
   
   const [formData, setFormData] = useState({
+    organization_sw: true,
     contact_person_name: '',
     organization_name: '',
     brand_name: '',
@@ -144,6 +146,7 @@ const Merchants = () => {
       moa: null, aoa: null, trading: null, director: null, partnership: null 
     });
     setFormData({
+      organization_sw: true,
       contact_person_name: '',
       organization_name: '',
       brand_name: '',
@@ -236,7 +239,6 @@ const Merchants = () => {
     mutationFn: async (updatedMerchant: any) => {
       const docIds: any = {};
       
-      // Handle file uploads for any new files selected
       const fileKeys = [
         { key: 'pan', field: 'pan_docid' },
         { key: 'aadhaar', field: 'aadhaar_docid' },
@@ -262,8 +264,6 @@ const Merchants = () => {
         update_date: new Date().toISOString(),
         phone_country_code: parseInt(updatedMerchant.phone_country_code),
         state: updatedMerchant.state ? parseInt(updatedMerchant.state) : null,
-        gstn: updatedMerchant.gstn ? parseInt(updatedMerchant.gstn) : null,
-        gstn_state: updatedMerchant.gstn_state ? parseInt(updatedMerchant.gstn_state) : null,
         pincode: updatedMerchant.pincode ? parseInt(updatedMerchant.pincode) : null,
         country: parseInt(updatedMerchant.country),
         update_by: parseInt(updatedMerchant.update_by)
@@ -306,6 +306,7 @@ const Merchants = () => {
   const handleEdit = (merchant: any) => {
     setEditingId(merchant.id);
     setFormData({
+      organization_sw: !!merchant.organization_sw,
       contact_person_name: merchant.contact_person_name || '',
       organization_name: merchant.organization_name || '',
       brand_name: merchant.brand_name || '',
@@ -357,22 +358,40 @@ const Merchants = () => {
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
             <Card key={editingId || 'new-merchant'} className="xl:col-span-2 shadow-lg border-indigo-100">
               <CardHeader className="bg-indigo-50/30 border-b">
-                <CardTitle className="flex items-center gap-2 text-indigo-700">
-                  <Building2 className="h-5 w-5" />
-                  Merchant Details
-                </CardTitle>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <CardTitle className="flex items-center gap-2 text-indigo-700">
+                    <Building2 className="h-5 w-5" />
+                    Merchant Details
+                  </CardTitle>
+                  <RadioGroup 
+                    value={formData.organization_sw ? "org" : "ind"} 
+                    onValueChange={(v) => setFormData({...formData, organization_sw: v === "org"})}
+                    className="flex items-center gap-4 bg-white p-1.5 rounded-lg border"
+                  >
+                    <div className="flex items-center space-x-2 px-2">
+                      <RadioGroupItem value="org" id="org" />
+                      <Label htmlFor="org" className="cursor-pointer text-xs font-bold">Organization</Label>
+                    </div>
+                    <div className="flex items-center space-x-2 px-2">
+                      <RadioGroupItem value="ind" id="ind" />
+                      <Label htmlFor="ind" className="cursor-pointer text-xs font-bold">Individual</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
               </CardHeader>
               <CardContent className="pt-8">
                 <form id="merchant-form" onSubmit={handleSubmit} className="space-y-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label>Organization Name *</Label>
-                      <Input 
-                        required
-                        value={formData.organization_name}
-                        onChange={(e) => setFormData({...formData, organization_name: e.target.value})}
-                      />
-                    </div>
+                    {formData.organization_sw && (
+                      <div className="space-y-2">
+                        <Label>Organization Name *</Label>
+                        <Input 
+                          required
+                          value={formData.organization_name}
+                          onChange={(e) => setFormData({...formData, organization_name: e.target.value})}
+                        />
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label>Brand Name</Label>
                       <Input 
@@ -381,7 +400,7 @@ const Merchants = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Contact Person *</Label>
+                      <Label>{formData.organization_sw ? 'Contact Person *' : 'Full Name *'}</Label>
                       <Input 
                         required
                         value={formData.contact_person_name}
@@ -459,20 +478,24 @@ const Merchants = () => {
                           onChange={(e) => setFormData({...formData, gstn: e.target.value})}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>SIN Number</Label>
-                        <Input 
-                          value={formData.sin_number}
-                          onChange={(e) => setFormData({...formData, sin_number: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>TIN Number</Label>
-                        <Input 
-                          value={formData.tin_number}
-                          onChange={(e) => setFormData({...formData, tin_number: e.target.value})}
-                        />
-                      </div>
+                      {formData.organization_sw && (
+                        <>
+                          <div className="space-y-2">
+                            <Label>SIN Number</Label>
+                            <Input 
+                              value={formData.sin_number}
+                              onChange={(e) => setFormData({...formData, sin_number: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>TIN Number</Label>
+                            <Input 
+                              value={formData.tin_number}
+                              onChange={(e) => setFormData({...formData, tin_number: e.target.value})}
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -608,44 +631,46 @@ const Merchants = () => {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-lg border-slate-200 overflow-hidden">
-                <CardHeader className="bg-slate-900 text-white">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <FileCheck className="h-5 w-5" />
-                    Other Documents
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-6">
-                  <div className="space-y-2">
-                    <Label>SIN Document</Label>
-                    <Input type="file" onChange={(e) => handleFileChange(e, 'sin')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>TIN Document</Label>
-                    <Input type="file" onChange={(e) => handleFileChange(e, 'tin')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>MOA Document</Label>
-                    <Input type="file" onChange={(e) => handleFileChange(e, 'moa')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>AOA Document</Label>
-                    <Input type="file" onChange={(e) => handleFileChange(e, 'aoa')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Trading Certificate</Label>
-                    <Input type="file" onChange={(e) => handleFileChange(e, 'trading')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Director Information</Label>
-                    <Input type="file" onChange={(e) => handleFileChange(e, 'director')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Partnership Agreement</Label>
-                    <Input type="file" onChange={(e) => handleFileChange(e, 'partnership')} />
-                  </div>
-                </CardContent>
-              </Card>
+              {formData.organization_sw && (
+                <Card className="shadow-lg border-slate-200 overflow-hidden">
+                  <CardHeader className="bg-slate-900 text-white">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FileCheck className="h-5 w-5" />
+                      Other Documents
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-6">
+                    <div className="space-y-2">
+                      <Label>SIN Document</Label>
+                      <Input type="file" onChange={(e) => handleFileChange(e, 'sin')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>TIN Document</Label>
+                      <Input type="file" onChange={(e) => handleFileChange(e, 'tin')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>MOA Document</Label>
+                      <Input type="file" onChange={(e) => handleFileChange(e, 'moa')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>AOA Document</Label>
+                      <Input type="file" onChange={(e) => handleFileChange(e, 'aoa')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Trading Certificate</Label>
+                      <Input type="file" onChange={(e) => handleFileChange(e, 'trading')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Director Information</Label>
+                      <Input type="file" onChange={(e) => handleFileChange(e, 'director')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Partnership Agreement</Label>
+                      <Input type="file" onChange={(e) => handleFileChange(e, 'partnership')} />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               <Button 
                 form="merchant-form"
@@ -676,7 +701,8 @@ const Merchants = () => {
                   <Table>
                     <TableHeader className="bg-slate-50">
                       <TableRow>
-                        <TableHead className="font-bold">Organization</TableHead>
+                        <TableHead className="font-bold">Type</TableHead>
+                        <TableHead className="font-bold">Organization / Name</TableHead>
                         <TableHead className="font-bold">Contact</TableHead>
                         <TableHead className="font-bold">Location</TableHead>
                         <TableHead className="font-bold">Status</TableHead>
@@ -687,14 +713,27 @@ const Merchants = () => {
                       {merchants?.map((merchant: any) => (
                         <TableRow key={merchant.id} className="hover:bg-slate-50/50 transition-colors">
                           <TableCell>
+                            {merchant.organization_sw ? (
+                              <div className="bg-indigo-50 text-indigo-700 p-1.5 rounded-lg w-fit" title="Organization">
+                                <Building2 className="h-4 w-4" />
+                              </div>
+                            ) : (
+                              <div className="bg-slate-100 text-slate-600 p-1.5 rounded-lg w-fit" title="Individual">
+                                <User className="h-4 w-4" />
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-bold text-slate-900">{merchant.organization_name}</span>
+                              <span className="font-bold text-slate-900">
+                                {merchant.organization_sw ? merchant.organization_name : merchant.contact_person_name}
+                              </span>
                               {merchant.brand_name && <span className="text-xs text-indigo-600 font-medium">{merchant.brand_name}</span>}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col text-sm gap-1">
-                              <span className="font-medium text-slate-700">{merchant.contact_person_name}</span>
+                              {merchant.organization_sw && <span className="font-medium text-slate-700">{merchant.contact_person_name}</span>}
                               <span className="text-xs text-slate-500 flex items-center gap-1"><Mail className="h-3 w-3" /> {merchant.email}</span>
                             </div>
                           </TableCell>
