@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
 import CategoryFilter from '@/components/CategoryFilter';
@@ -8,9 +8,15 @@ import EventCard from '@/components/EventCard';
 import Footer from '@/components/Footer';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Store, ArrowRight } from 'lucide-react';
+import { Store, ArrowRight, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useMutation } from '@tanstack/react-query';
+import { showSuccess, showError } from "@/utils/toast";
+import { API_URL } from "@/config";
 
 const MOCK_EVENTS = [
   {
@@ -46,6 +52,36 @@ const MOCK_EVENTS = [
 ];
 
 const Index = () => {
+  const [isEnquiryOpen, setIsEnquiryOpen] = useState(false);
+  const [enquiryData, setEnquiryData] = useState({
+    merchant_name: '',
+    merchant_email: '',
+    enquiry_details: ''
+  });
+
+  const enquiryMutation = useMutation({
+    mutationFn: async (data: typeof enquiryData) => {
+      const res = await fetch(`${API_URL}/merchant-enquiries`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Failed to send enquiry');
+      return res.json();
+    },
+    onSuccess: () => {
+      showSuccess("Enquiry sent successfully! Our team will contact you soon.");
+      setIsEnquiryOpen(false);
+      setEnquiryData({ merchant_name: '', merchant_email: '', enquiry_details: '' });
+    },
+    onError: (err: any) => showError(err.message)
+  });
+
+  const handleEnquirySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    enquiryMutation.mutate(enquiryData);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
@@ -67,12 +103,14 @@ const Index = () => {
                   Join our network of merchants and start selling tickets to thousands of eager fans today.
                 </p>
               </div>
-              <Link to="/merchants">
-                <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-6 rounded-2xl text-lg font-bold group">
-                  Register as Merchant
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
+              <Button 
+                size="lg" 
+                onClick={() => setIsEnquiryOpen(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-6 rounded-2xl text-lg font-bold group"
+              >
+                Register as Merchant
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
             </div>
           </div>
         </section>
@@ -126,6 +164,72 @@ const Index = () => {
           </div>
         </section>
       </main>
+
+      {/* Merchant Enquiry Dialog */}
+      <Dialog open={isEnquiryOpen} onOpenChange={setIsEnquiryOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-indigo-600 flex items-center gap-2">
+              <Store className="h-6 w-6" />
+              Merchant Partnership
+            </DialogTitle>
+            <DialogDescription>
+              Fill out the form below and our team will get back to you with onboarding details.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEnquirySubmit} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="merchant_name">Organization / Name *</Label>
+              <Input 
+                id="merchant_name" 
+                required 
+                placeholder="e.g. Global Events Ltd."
+                value={enquiryData.merchant_name}
+                onChange={(e) => setEnquiryData({...enquiryData, merchant_name: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="merchant_email">Email Address *</Label>
+              <Input 
+                id="merchant_email" 
+                type="email" 
+                required 
+                placeholder="contact@yourcompany.com"
+                value={enquiryData.merchant_email}
+                onChange={(e) => setEnquiryData({...enquiryData, merchant_email: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="enquiry_details">Tell us about your events *</Label>
+              <Textarea 
+                id="enquiry_details" 
+                required 
+                placeholder="What kind of events do you organize? (Max 500 chars)"
+                className="min-h-[120px]"
+                maxLength={500}
+                value={enquiryData.enquiry_details}
+                onChange={(e) => setEnquiryData({...enquiryData, enquiry_details: e.target.value})}
+              />
+            </div>
+            <DialogFooter className="pt-4">
+              <Button 
+                type="submit" 
+                className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 text-lg font-bold"
+                disabled={enquiryMutation.isPending}
+              >
+                {enquiryMutation.isPending ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    Send Enquiry
+                    <Send className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
       <MadeWithDyad />
