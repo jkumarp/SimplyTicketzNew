@@ -308,6 +308,8 @@ const Merchants = () => {
     if (!formData.addressline1) return showError("Address Line 1 is required");
     if (!formData.pan_number) return showError("PAN Number is required");
     if (!formData.aadhaar_number) return showError("Aadhaar Number is required");
+    if (!formData.email) return showError("Primary Email Address is required");
+    if (!formData.phone) return showError("Primary Phone Number is required");
 
     if (editingId) updateMutation.mutate(formData);
     else createMutation.mutate(formData);
@@ -419,9 +421,10 @@ const Merchants = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Primary Email Address</Label>
+                      <Label>Primary Email Address *</Label>
                       <Input 
                         type="email"
+                        required
                         value={formData.email}
                         onChange={(e) => setFormData({...formData, email: e.target.value})}
                       />
@@ -435,8 +438,9 @@ const Merchants = () => {
                         />
                       </div>
                       <div className="col-span-3 space-y-2">
-                        <Label>Primary Phone Number</Label>
+                        <Label>Primary Phone Number *</Label>
                         <Input 
+                          required
                           maxLength={10}
                           value={formData.phone}
                           onChange={(e) => setFormData({...formData, phone: e.target.value})}
