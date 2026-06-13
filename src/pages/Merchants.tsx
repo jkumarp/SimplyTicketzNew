@@ -262,6 +262,8 @@ const Merchants = () => {
         update_date: new Date().toISOString(),
         phone_country_code: parseInt(updatedMerchant.phone_country_code),
         state: updatedMerchant.state ? parseInt(updatedMerchant.state) : null,
+        gstn: updatedMerchant.gstn ? parseInt(updatedMerchant.gstn) : null,
+        gstn_state: updatedMerchant.gstn_state ? parseInt(updatedMerchant.gstn_state) : null,
         pincode: updatedMerchant.pincode ? parseInt(updatedMerchant.pincode) : null,
         country: parseInt(updatedMerchant.country),
         update_by: parseInt(updatedMerchant.update_by)
