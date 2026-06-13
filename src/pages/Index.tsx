@@ -61,11 +61,30 @@ const Index = () => {
 
   const enquiryMutation = useMutation({
     mutationFn: async (data: typeof enquiryData) => {
-      const res = await fetch(`${API_URL}/merchant-enquiries`, {
+      // 1. Generate Guest Token first
+      const guestRes = await fetch(`${API_URL}/guestLogin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.merchant_email })
+      });
+      
+      if (!guestRes.ok) {
+        throw new Error('Guest authentication failed');
+      }
+      
+      const guestAuth = await guestRes.json();
+      const token = guestAuth.token;
+
+      // 2. Submit Enquiry with the generated token
+      const res = await fetch(`${API_URL}/merchant-enquiries`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(data)
       });
+      
       if (!res.ok) throw new Error('Failed to send enquiry');
       return res.json();
     },

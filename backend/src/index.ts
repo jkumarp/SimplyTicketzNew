@@ -39,9 +39,10 @@ app.use(express.json());
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Public Auth Routes
-import { signInUser, signOutUser } from './controllers/userController';
+import { signInUser, signOutUser, generateGuestToken } from './controllers/userController';
 app.post('/api/login', signInUser);
 app.post('/api/logout', signOutUser);
+app.post('/api/guestLogin', generateGuestToken);
 
 // Mount Protected Routes
 app.use('/api', authorizeRoles(1,2,3,4,5), merchantRoutes);
