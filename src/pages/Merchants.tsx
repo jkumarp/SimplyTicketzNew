@@ -21,7 +21,8 @@ import { showSuccess, showError } from "@/utils/toast";
 import { 
   Store, Loader2, Mail, Phone, MapPin, FileText, 
   ShieldCheck, Building2, Upload, CheckCircle2, 
-  CreditCard, ClipboardCheck, Pencil, X, Eye
+  CreditCard, ClipboardCheck, Pencil, X, Eye,
+  Briefcase, Globe, FileCheck
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -32,20 +33,33 @@ const Merchants = () => {
   const [files, setFiles] = useState<{ [key: string]: File | null }>({
     pan: null,
     aadhaar: null,
-    gstn: null
+    gstn: null,
+    sin: null,
+    tin: null,
+    moa: null,
+    aoa: null,
+    trading: null,
+    director: null,
+    partnership: null
   });
   
   const [formData, setFormData] = useState({
     contact_person_name: '',
     organization_name: '',
+    brand_name: '',
     email: '',
     phone_country_code: '91',
     phone: '',
+    contact_phone: '',
+    contact_email: '',
     pan_number: '',
     aadhaar_number: '',
     gstn: '',
+    sin_number: '',
+    tin_number: '',
     addressline1: '',
     addressline2: '',
+    city: '',
     state: '',
     pincode: '',
     country: '1',
@@ -125,18 +139,27 @@ const Merchants = () => {
 
   const resetForm = () => {
     setEditingId(null);
-    setFiles({ pan: null, aadhaar: null, gstn: null });
+    setFiles({ 
+      pan: null, aadhaar: null, gstn: null, sin: null, tin: null, 
+      moa: null, aoa: null, trading: null, director: null, partnership: null 
+    });
     setFormData({
       contact_person_name: '',
       organization_name: '',
+      brand_name: '',
       email: '',
       phone_country_code: '91',
       phone: '',
+      contact_phone: '',
+      contact_email: '',
       pan_number: '',
       aadhaar_number: '',
       gstn: '',
+      sin_number: '',
+      tin_number: '',
       addressline1: '',
       addressline2: '',
+      city: '',
       state: '',
       pincode: '',
       country: '1',
@@ -156,14 +179,29 @@ const Merchants = () => {
 
       const pan_docid = await uploadFile(files.pan);
       const aadhaar_docid = await uploadFile(files.aadhaar);
-      let gstn_docid = '';
-      if (files.gstn) gstn_docid = await uploadFile(files.gstn);
+      
+      // Optional files
+      const gstn_docid = files.gstn ? await uploadFile(files.gstn) : '';
+      const sin_docid = files.sin ? await uploadFile(files.sin) : '';
+      const tin_docid = files.tin ? await uploadFile(files.tin) : '';
+      const moa_docid = files.moa ? await uploadFile(files.moa) : '';
+      const aoa_docid = files.aoa ? await uploadFile(files.aoa) : '';
+      const trading_certificate_docid = files.trading ? await uploadFile(files.trading) : '';
+      const director_information_docid = files.director ? await uploadFile(files.director) : '';
+      const partnership_agreement_docid = files.partnership ? await uploadFile(files.partnership) : '';
 
       const payload = {
         ...newMerchant,
         pan_docid,
         aadhaar_docid,
         gstn_docid,
+        sin_docid,
+        tin_docid,
+        moa_docid,
+        aoa_docid,
+        trading_certificate_docid,
+        director_information_docid,
+        partnership_agreement_docid,
         update_date: new Date().toISOString(),
         phone_country_code: parseInt(newMerchant.phone_country_code),
         state: newMerchant.state ? parseInt(newMerchant.state) : null,
@@ -196,19 +234,31 @@ const Merchants = () => {
 
   const updateMutation = useMutation({
     mutationFn: async (updatedMerchant: any) => {
-      let pan_docid = updatedMerchant.pan_docid;
-      let aadhaar_docid = updatedMerchant.aadhaar_docid;
-      let gstn_docid = updatedMerchant.gstn_docid;
+      const docIds: any = {};
+      
+      // Handle file uploads for any new files selected
+      const fileKeys = [
+        { key: 'pan', field: 'pan_docid' },
+        { key: 'aadhaar', field: 'aadhaar_docid' },
+        { key: 'gstn', field: 'gstn_docid' },
+        { key: 'sin', field: 'sin_docid' },
+        { key: 'tin', field: 'tin_docid' },
+        { key: 'moa', field: 'moa_docid' },
+        { key: 'aoa', field: 'aoa_docid' },
+        { key: 'trading', field: 'trading_certificate_docid' },
+        { key: 'director', field: 'director_information_docid' },
+        { key: 'partnership', field: 'partnership_agreement_docid' }
+      ];
 
-      if (files.pan) pan_docid = await uploadFile(files.pan);
-      if (files.aadhaar) aadhaar_docid = await uploadFile(files.aadhaar);
-      if (files.gstn) gstn_docid = await uploadFile(files.gstn);
+      for (const item of fileKeys) {
+        if (files[item.key]) {
+          docIds[item.field] = await uploadFile(files[item.key]!);
+        }
+      }
 
       const payload = {
         ...updatedMerchant,
-        pan_docid,
-        aadhaar_docid,
-        gstn_docid,
+        ...docIds,
         update_date: new Date().toISOString(),
         phone_country_code: parseInt(updatedMerchant.phone_country_code),
         state: updatedMerchant.state ? parseInt(updatedMerchant.state) : null,
@@ -256,14 +306,20 @@ const Merchants = () => {
     setFormData({
       contact_person_name: merchant.contact_person_name || '',
       organization_name: merchant.organization_name || '',
+      brand_name: merchant.brand_name || '',
       email: merchant.email || '',
       phone_country_code: merchant.phone_country_code?.toString() || '91',
       phone: merchant.phone || '',
+      contact_phone: merchant.contact_phone || '',
+      contact_email: merchant.contact_email || '',
       pan_number: merchant.pan_number || '',
       aadhaar_number: merchant.aadhaar_number || '',
       gstn: merchant.gstn || '',
+      sin_number: merchant.sin_number || '',
+      tin_number: merchant.tin_number || '',
       addressline1: merchant.addressline1 || '',
       addressline2: merchant.addressline2 || '',
+      city: merchant.city || '',
       state: merchant.state?.toString() || '',
       pincode: merchant.pincode?.toString() || '',
       country: merchant.country?.toString() || '1',
@@ -287,6 +343,7 @@ const Merchants = () => {
               <h1 className="text-3xl font-bold text-slate-900">
                 {editingId ? 'Edit Merchant' : 'Merchant Onboarding'}
               </h1>
+              <p className="text-slate-500">Complete the profile and upload necessary documents</p>
             </div>
             {editingId && (
               <Button variant="outline" onClick={resetForm} className="gap-2">
@@ -315,6 +372,13 @@ const Merchants = () => {
                       />
                     </div>
                     <div className="space-y-2">
+                      <Label>Brand Name</Label>
+                      <Input 
+                        value={formData.brand_name}
+                        onChange={(e) => setFormData({...formData, brand_name: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label>Contact Person *</Label>
                       <Input 
                         required
@@ -323,7 +387,7 @@ const Merchants = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Email Address</Label>
+                      <Label>Primary Email Address</Label>
                       <Input 
                         type="email"
                         value={formData.email}
@@ -339,7 +403,7 @@ const Merchants = () => {
                         />
                       </div>
                       <div className="col-span-3 space-y-2">
-                        <Label>Phone Number</Label>
+                        <Label>Primary Phone Number</Label>
                         <Input 
                           maxLength={10}
                           value={formData.phone}
@@ -347,13 +411,28 @@ const Merchants = () => {
                         />
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <Label>Secondary Contact Phone</Label>
+                      <Input 
+                        value={formData.contact_phone}
+                        onChange={(e) => setFormData({...formData, contact_phone: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Secondary Contact Email</Label>
+                      <Input 
+                        type="email"
+                        value={formData.contact_email}
+                        onChange={(e) => setFormData({...formData, contact_email: e.target.value})}
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-4">
                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                       <CreditCard className="h-4 w-4" /> Identity & Tax
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       <div className="space-y-2">
                         <Label>PAN Number</Label>
                         <Input 
@@ -378,6 +457,20 @@ const Merchants = () => {
                           onChange={(e) => setFormData({...formData, gstn: e.target.value})}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label>SIN Number</Label>
+                        <Input 
+                          value={formData.sin_number}
+                          onChange={(e) => setFormData({...formData, sin_number: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>TIN Number</Label>
+                        <Input 
+                          value={formData.tin_number}
+                          onChange={(e) => setFormData({...formData, tin_number: e.target.value})}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -400,7 +493,14 @@ const Merchants = () => {
                           onChange={(e) => setFormData({...formData, addressline2: e.target.value})}
                         />
                       </div>
-                      <div className="grid grid-cols-3 gap-4 md:col-span-2">
+                      <div className="space-y-2">
+                        <Label>City</Label>
+                        <Input 
+                          value={formData.city}
+                          onChange={(e) => setFormData({...formData, city: e.target.value})}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 md:col-span-1">
                         <div className="space-y-2">
                           <Label>Country *</Label>
                           <Select 
@@ -487,16 +587,16 @@ const Merchants = () => {
                 <CardHeader className="bg-indigo-600 text-white">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Upload className="h-5 w-5" />
-                    Documents
+                    Mandatory Documents
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
                   <div className="space-y-2">
-                    <Label>PAN Card</Label>
+                    <Label>PAN Card *</Label>
                     <Input type="file" onChange={(e) => handleFileChange(e, 'pan')} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Aadhaar Card</Label>
+                    <Label>Aadhaar Card *</Label>
                     <Input type="file" onChange={(e) => handleFileChange(e, 'aadhaar')} />
                   </div>
                   <div className="space-y-2">
@@ -506,13 +606,57 @@ const Merchants = () => {
                 </CardContent>
               </Card>
 
+              <Card className="shadow-lg border-slate-200 overflow-hidden">
+                <CardHeader className="bg-slate-900 text-white">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <FileCheck className="h-5 w-5" />
+                    Other Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  <div className="space-y-2">
+                    <Label>SIN Document</Label>
+                    <Input type="file" onChange={(e) => handleFileChange(e, 'sin')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>TIN Document</Label>
+                    <Input type="file" onChange={(e) => handleFileChange(e, 'tin')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>MOA Document</Label>
+                    <Input type="file" onChange={(e) => handleFileChange(e, 'moa')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>AOA Document</Label>
+                    <Input type="file" onChange={(e) => handleFileChange(e, 'aoa')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Trading Certificate</Label>
+                    <Input type="file" onChange={(e) => handleFileChange(e, 'trading')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Director Information</Label>
+                    <Input type="file" onChange={(e) => handleFileChange(e, 'director')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Partnership Agreement</Label>
+                    <Input type="file" onChange={(e) => handleFileChange(e, 'partnership')} />
+                  </div>
+                </CardContent>
+              </Card>
+
               <Button 
                 form="merchant-form"
                 type="submit" 
-                className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-lg font-bold rounded-2xl"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-lg font-bold rounded-2xl shadow-lg shadow-indigo-100"
                 disabled={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending || updateMutation.isPending ? <Loader2 className="animate-spin" /> : (editingId ? 'Update Merchant' : 'Complete Registration')}
+                {createMutation.isPending || updateMutation.isPending ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Uploading & Saving...</span>
+                  </div>
+                ) : (editingId ? 'Update Merchant' : 'Complete Registration')}
               </Button>
             </div>
           </div>
@@ -520,40 +664,68 @@ const Merchants = () => {
           <Card className="shadow-md border-slate-200">
             <CardHeader>
               <CardTitle>Merchant Directory</CardTitle>
+              <CardDescription>Manage registered event organizers and their verification status</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoadingMerchants ? (
                 <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-600" /></div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Organization</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Documents</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {merchants?.map((merchant: any) => (
-                      <TableRow key={merchant.id}>
-                        <TableCell className="font-bold">{merchant.organization_name}</TableCell>
-                        <TableCell>{merchant.contact_person_name}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            {merchant.pan_docid && <Button size="sm" variant="outline" onClick={() => viewDocument(merchant.pan_docid)}>PAN</Button>}
-                            {merchant.aadhaar_docid && <Button size="sm" variant="outline" onClick={() => viewDocument(merchant.aadhaar_docid)}>AADHAAR</Button>}
-                          </div>
-                        </TableCell>
-                        <TableCell>{merchant.status_sw ? 'ACTIVE' : 'INACTIVE'}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(merchant)}><Pencil className="h-4 w-4" /></Button>
-                        </TableCell>
+                <div className="rounded-xl border overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow>
+                        <TableHead className="font-bold">Organization</TableHead>
+                        <TableHead className="font-bold">Contact</TableHead>
+                        <TableHead className="font-bold">Location</TableHead>
+                        <TableHead className="font-bold">Status</TableHead>
+                        <TableHead className="text-right font-bold">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {merchants?.map((merchant: any) => (
+                        <TableRow key={merchant.id} className="hover:bg-slate-50/50 transition-colors">
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-900">{merchant.organization_name}</span>
+                              {merchant.brand_name && <span className="text-xs text-indigo-600 font-medium">{merchant.brand_name}</span>}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col text-sm gap-1">
+                              <span className="font-medium text-slate-700">{merchant.contact_person_name}</span>
+                              <span className="text-xs text-slate-500 flex items-center gap-1"><Mail className="h-3 w-3" /> {merchant.email}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 text-sm text-slate-600">
+                              <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                              {merchant.city || 'N/A'}, {states?.find((s: any) => s.id === merchant.state)?.name || 'N/A'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold w-fit ${merchant.status_sw ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                                {merchant.status_sw ? 'ACTIVE' : 'INACTIVE'}
+                              </span>
+                              {merchant.kyc_completed_sw && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-600">
+                                  <CheckCircle2 className="h-3 w-3" /> KYC VERIFIED
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600 hover:bg-indigo-50" onClick={() => handleEdit(merchant)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>

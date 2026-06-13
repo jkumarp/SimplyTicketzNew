@@ -1,11 +1,14 @@
-import { Request, Response } from 'express';
-import { supabase } from '../config/supabase.ts';
+import { Request, Response } from "express";
+import { supabase } from "../config/supabase.ts";
 
-export const getMerchants = async (req: Request, res: Response): Promise<void> => {
+export const getMerchants = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const { data, error } = await supabase
-      .schema('master')
-      .from('merchant')
+      .schema("master")
+      .from("merchant")
       .select(`
         id,
         contact_person_name,
@@ -32,7 +35,21 @@ export const getMerchants = async (req: Request, res: Response): Promise<void> =
         gstn,
         pan_docid,
         aadhaar_docid,
-        gstn_docid
+        gstn_docid,
+        organization_sw,
+        city,
+        brand_name,
+        contact_phone,
+        contact_email,
+        sin_number,
+        sin_docid,
+        tin_number,
+        tin_docid,
+        moa_docid,
+        aoa_docid,
+        trading_certificate_docid,
+        director_information_docid,
+        partnership_agreement_docid
       `);
 
     if (error) {
@@ -45,11 +62,14 @@ export const getMerchants = async (req: Request, res: Response): Promise<void> =
       data,
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-export const setMerchants = async (req: Request, res: Response): Promise<void> => {
+export const setMerchants = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   const {
     contact_person_name,
     organization_name,
@@ -75,13 +95,27 @@ export const setMerchants = async (req: Request, res: Response): Promise<void> =
     gstn,
     pan_docid,
     aadhaar_docid,
-    gstn_docid
+    gstn_docid,
+    organization_sw,
+    city,
+    brand_name,
+    contact_phone,
+    contact_email,
+    sin_number,
+    sin_docid,
+    tin_number,
+    tin_docid,
+    moa_docid,
+    aoa_docid,
+    trading_certificate_docid,
+    director_information_docid,
+    partnership_agreement_docid
   } = req.body;
 
   try {
     const { data, error } = await supabase
-      .schema('master')
-      .from('merchant')
+      .schema("master")
+      .from("merchant")
       .insert([{
         contact_person_name,
         organization_name,
@@ -107,7 +141,21 @@ export const setMerchants = async (req: Request, res: Response): Promise<void> =
         gstn,
         pan_docid,
         aadhaar_docid,
-        gstn_docid
+        gstn_docid,
+        organization_sw,
+        city,
+        brand_name,
+        contact_phone,
+        contact_email,
+        sin_number,
+        sin_docid,
+        tin_number,
+        tin_docid,
+        moa_docid,
+        aoa_docid,
+        trading_certificate_docid,
+        director_information_docid,
+        partnership_agreement_docid,
       }])
       .select();
 
@@ -121,20 +169,23 @@ export const setMerchants = async (req: Request, res: Response): Promise<void> =
       data,
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-export const updateMerchant = async (req: Request, res: Response): Promise<void> => {
+export const updateMerchant = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   const { id } = req.params;
   const updateData = req.body;
 
   try {
     const { data, error } = await supabase
-      .schema('master')
-      .from('merchant')
+      .schema("master")
+      .from("merchant")
       .update(updateData)
-      .eq('id', id)
+      .eq("id", id)
       .select();
 
     if (error) {
@@ -147,6 +198,6 @@ export const updateMerchant = async (req: Request, res: Response): Promise<void>
       data,
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
