@@ -183,7 +183,6 @@ const Merchants = () => {
       const pan_docid = await uploadFile(files.pan);
       const aadhaar_docid = await uploadFile(files.aadhaar);
       
-      // Optional files
       const gstn_docid = files.gstn ? await uploadFile(files.gstn) : '';
       const sin_docid = files.sin ? await uploadFile(files.sin) : '';
       const tin_docid = files.tin ? await uploadFile(files.tin) : '';
@@ -299,6 +298,17 @@ const Merchants = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Manual validation for mandatory fields
+    if (formData.organization_sw && !formData.organization_name) {
+      return showError("Organization Name is required");
+    }
+    if (!formData.brand_name) return showError("Brand Name is required");
+    if (!formData.city) return showError("City is required");
+    if (!formData.addressline1) return showError("Address Line 1 is required");
+    if (!formData.pan_number) return showError("PAN Number is required");
+    if (!formData.aadhaar_number) return showError("Aadhaar Number is required");
+
     if (editingId) updateMutation.mutate(formData);
     else createMutation.mutate(formData);
   };
@@ -393,8 +403,9 @@ const Merchants = () => {
                       </div>
                     )}
                     <div className="space-y-2">
-                      <Label>Brand Name</Label>
+                      <Label>Brand Name *</Label>
                       <Input 
+                        required
                         value={formData.brand_name}
                         onChange={(e) => setFormData({...formData, brand_name: e.target.value})}
                       />
@@ -455,8 +466,9 @@ const Merchants = () => {
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       <div className="space-y-2">
-                        <Label>PAN Number</Label>
+                        <Label>PAN Number *</Label>
                         <Input 
+                          required
                           maxLength={10}
                           className="uppercase"
                           value={formData.pan_number}
@@ -464,8 +476,9 @@ const Merchants = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Aadhaar Number</Label>
+                        <Label>Aadhaar Number *</Label>
                         <Input 
+                          required
                           maxLength={12}
                           value={formData.aadhaar_number}
                           onChange={(e) => setFormData({...formData, aadhaar_number: e.target.value})}
@@ -505,8 +518,9 @@ const Merchants = () => {
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label>Address Line 1</Label>
+                        <Label>Address Line 1 *</Label>
                         <Input 
+                          required
                           value={formData.addressline1}
                           onChange={(e) => setFormData({...formData, addressline1: e.target.value})}
                         />
@@ -519,8 +533,9 @@ const Merchants = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>City</Label>
+                        <Label>City *</Label>
                         <Input 
+                          required
                           value={formData.city}
                           onChange={(e) => setFormData({...formData, city: e.target.value})}
                         />
@@ -757,7 +772,7 @@ const Merchants = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600 hover:bg-indigo-50" onClick={() => handleEdit(merchant)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600 hover:bg-indigo-700 hover:bg-indigo-50" onClick={() => handleEdit(merchant)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
                             </div>
