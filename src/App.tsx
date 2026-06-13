@@ -36,7 +36,7 @@ const App = () => (
           <Route path="/merchant/book/:serviceId" element={<MerchantTicketBooking />} />
           <Route path="/merchant/manage/:serviceId" element={<MerchantManageTickets />} />
           <Route path="/merchant/print/:ticketId" element={<MerchantPrintTicket />} />
-          <Route path="/book" element={<CustomerTicketBooking />} />
+          <Route path="/book/:serviceId" element={<CustomerTicketBooking />} />
           <Route path="/view-site-map" element={<ViewSiteMap />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
