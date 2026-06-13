@@ -207,6 +207,8 @@ const Merchants = () => {
         update_date: new Date().toISOString(),
         phone_country_code: parseInt(newMerchant.phone_country_code),
         state: newMerchant.state ? parseInt(newMerchant.state) : null,
+        gstn: newMerchant.gstn ? parseInt(newMerchant.gstn) : null,
+        gstn_state: newMerchant.gstn_state ? parseInt(newMerchant.gstn_state) : null,
         pincode: newMerchant.pincode ? parseInt(newMerchant.pincode) : null,
         country: parseInt(newMerchant.country),
         update_by: parseInt(newMerchant.update_by)
@@ -451,6 +453,7 @@ const Merchants = () => {
                       <Label>Secondary Contact Phone</Label>
                       <Input 
                         value={formData.contact_phone}
+                        maxLength={10}
                         onChange={(e) => setFormData({...formData, contact_phone: e.target.value})}
                       />
                     </div>
