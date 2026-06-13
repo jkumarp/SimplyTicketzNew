@@ -296,7 +296,7 @@ const Merchants = () => {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            <Card className="xl:col-span-2 shadow-lg border-indigo-100">
+            <Card key={editingId || 'new-merchant'} className="xl:col-span-2 shadow-lg border-indigo-100">
               <CardHeader className="bg-indigo-50/30 border-b">
                 <CardTitle className="flex items-center gap-2 text-indigo-700">
                   <Building2 className="h-5 w-5" />
@@ -483,7 +483,7 @@ const Merchants = () => {
             </Card>
 
             <div className="space-y-8">
-              <Card className="shadow-lg border-indigo-100 overflow-hidden">
+              <Card key={`docs-${editingId || 'new'}`} className="shadow-lg border-indigo-100 overflow-hidden">
                 <CardHeader className="bg-indigo-600 text-white">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Upload className="h-5 w-5" />

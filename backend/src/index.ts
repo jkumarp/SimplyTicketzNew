@@ -44,7 +44,15 @@ app.post('/api/login', signInUser);
 app.post('/api/logout', signOutUser);
 app.post('/api/guestLogin', generateGuestToken);
 
+// Public/Semi-public routes
+app.use('/api', merchantEnquiryRoutes);
+app.use('/api', countryRoutes);
+app.use('/api', stateRoutes);
+app.use('/api', userTypeRoutes);
+app.use('/api/documents', documentRoutes);
+
 // Mount Protected Routes
+app.use('/api', authorizeRoles(1, 2), userRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), merchantRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), merchantServicesRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), merchantSubscriptionRoutes);
@@ -55,14 +63,9 @@ app.use('/api', authorizeRoles(1,2,3,4,5), ticketRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), ticketDetailRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), invoiceRoutes);
 app.use('/api', authorizeRoles(1,2,3,4,5), invoiceDetailRoutes);
-app.use('/api', authorizeRoles(1, 2), userRoutes);
 
-// Public/Semi-public routes
-app.use('/api', merchantEnquiryRoutes);
-app.use('/api', countryRoutes);
-app.use('/api', stateRoutes);
-app.use('/api', userTypeRoutes);
-app.use('/api/documents', documentRoutes);
+
+
 
 app.listen(PORT, () => {
   console.log(`Server running smoothly http://localhost:${PORT}/`);
