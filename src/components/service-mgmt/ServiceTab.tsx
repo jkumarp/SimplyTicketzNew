@@ -171,6 +171,8 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
         sgst: data.sgst ? parseFloat(data.sgst) : 0,
         cgst: data.cgst ? parseFloat(data.cgst) : 0,
         igst: data.igst ? parseFloat(data.igst) : 0,
+        start_date: data.start_date || null,
+        end_date: data.end_date || null,
       };
       const url = editingId ? `${API_URL}/merchant-services/${editingId}` : `${API_URL}/merchant-services`;
       const res = await fetch(url, {
