@@ -508,7 +508,7 @@ const MerchantSubscription = () => {
                             </div>
                           </TableCell>
                           <TableCell className="font-medium text-slate-900">
-                            ${sub.convinience_fee}
+                            ₹{sub.convinience_fee}
                           </TableCell>
                           <TableCell>
                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${sub.status_sw ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>

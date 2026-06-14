@@ -28,7 +28,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
-import { Ticket, Loader2, DollarSign, Pencil, X, AlertCircle, Info, Users } from 'lucide-react';
+import { Ticket, Loader2, IndianRupee, Pencil, X, AlertCircle, Info, Users } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -161,7 +161,7 @@ const CategoryTab = ({ serviceId }: CategoryTabProps) => {
             <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category Name *</FormLabel>
+                  <FormLabel>Activity Name *</FormLabel>
                   <FormControl><Input placeholder="e.g. General Admission" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -199,7 +199,7 @@ const CategoryTab = ({ serviceId }: CategoryTabProps) => {
                       <FormLabel>Adult Price *</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                           <Input className="pl-10" {...field} />
                         </div>
                       </FormControl>
@@ -210,7 +210,7 @@ const CategoryTab = ({ serviceId }: CategoryTabProps) => {
                       <FormLabel>Child Price</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                           <Input className="pl-10" {...field} />
                         </div>
                       </FormControl>
@@ -284,7 +284,7 @@ const CategoryTab = ({ serviceId }: CategoryTabProps) => {
                 <TableHeader className="bg-slate-50">
                   <TableRow>
                     <TableHead>Category Name</TableHead>
-                    <TableHead>Price (A/C)</TableHead>
+                    <TableHead>Price</TableHead>
                     <TableHead>Limits</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -300,7 +300,7 @@ const CategoryTab = ({ serviceId }: CategoryTabProps) => {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
-                        ${cat.adult_price} / ${cat.child_price || '0.00'}
+                      ₹{cat.adult_price} / ₹{cat.child_price || '0.00'}
                       </TableCell>
                       <TableCell className="text-xs text-slate-500">
                         <div className="flex flex-col gap-1">
