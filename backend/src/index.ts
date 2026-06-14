@@ -20,7 +20,7 @@ import userTypeRoutes from './routes/userTypeRoutes';
 import merchantEnquiryRoutes from './routes/merchantEnquiryRoutes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
-import { authorizeRoles } from './middleware/authMiddleware';
+
 
 dotenv.config();
 
@@ -52,17 +52,17 @@ app.use('/api', userTypeRoutes);
 app.use('/api/documents', documentRoutes);
 
 // Mount Protected Routes
-app.use('/api', authorizeRoles(1, 2), userRoutes);
-app.use('/api', authorizeRoles(1,2,3,4,5), merchantRoutes);
-app.use('/api', authorizeRoles(1,2,3,4,5), merchantServicesRoutes);
-app.use('/api', authorizeRoles(1,2,3,4,5), merchantSubscriptionRoutes);
-app.use('/api', authorizeRoles(1,2,3,4,5), ticketTimeslotRoutes);
-app.use('/api', authorizeRoles(1,2,3,4,5), ticketCategoryRoutes);
-app.use('/api', authorizeRoles(1,2,3,4,5), merchantDeviceRoutes);
-app.use('/api', authorizeRoles(1,2,3,4,5), ticketRoutes);
-app.use('/api', authorizeRoles(1,2,3,4,5), ticketDetailRoutes);
-app.use('/api', authorizeRoles(1,2,3,4,5), invoiceRoutes);
-app.use('/api', authorizeRoles(1,2,3,4,5), invoiceDetailRoutes);
+app.use('/api', userRoutes);
+app.use('/api', merchantRoutes);
+app.use('/api', merchantServicesRoutes);
+app.use('/api', merchantSubscriptionRoutes);
+app.use('/api', ticketTimeslotRoutes);
+app.use('/api', ticketCategoryRoutes);
+app.use('/api', merchantDeviceRoutes);
+app.use('/api', ticketRoutes);
+app.use('/api', ticketDetailRoutes);
+app.use('/api', invoiceRoutes);
+app.use('/api', invoiceDetailRoutes);
 
 
 

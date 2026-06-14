@@ -30,7 +30,7 @@ import { showSuccess, showError } from "@/utils/toast";
 import { 
   Briefcase, Loader2, Building2, MapPin, Clock, 
   CreditCard, Pencil, X, QrCode, Palette, Image as ImageIcon,
-  CalendarDays, Globe, Link as LinkIcon, ShieldAlert
+  CalendarDays, Globe, Link as LinkIcon, ShieldAlert, Percent, Calendar
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -64,7 +64,12 @@ const serviceSchema = z.object({
   location_coordinates: z.string().max(100).optional().or(z.literal('')),
   encrypted_url: z.string().max(500).optional().or(z.literal('')),
   status_sw: z.boolean().default(true),
-  update_by: z.string().default("1")
+  update_by: z.string().default("1"),
+  sgst: z.string().regex(/^\d*\.?\d*$/).optional().or(z.literal('')),
+  cgst: z.string().regex(/^\d*\.?\d*$/).optional().or(z.literal('')),
+  igst: z.string().regex(/^\d*\.?\d*$/).optional().or(z.literal('')),
+  start_date: z.string().optional().or(z.literal('')),
+  end_date: z.string().optional().or(z.literal('')),
 });
 
 type ServiceFormValues = z.infer<typeof serviceSchema>;
@@ -78,7 +83,6 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // Get user role for restriction
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isRestricted = [4, 5, 6].includes(user.role);
 
@@ -93,13 +97,14 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       fri_working_sw: true, sat_working_sw: false, sun_working_sw: false,
       addressline1: '', addressline2: '', state: '', pincode: '',
       country: '1', location_coordinates: '', encrypted_url: '',
-      status_sw: true, update_by: '1'
+      status_sw: true, update_by: '1',
+      sgst: '0', cgst: '0', igst: '0',
+      start_date: '', end_date: ''
     }
   });
 
   const getAuthHeader = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}` });
 
-  // Queries
   const { data: services, isLoading: isLoadingServices } = useQuery({
     queryKey: ['merchant-services'],
     queryFn: async () => {
@@ -143,7 +148,10 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
         state: data.state ? parseInt(data.state) : null,
         pincode: data.pincode ? parseInt(data.pincode) : null,
         country: parseInt(data.country),
-        update_by: parseInt(data.update_by)
+        update_by: parseInt(data.update_by),
+        sgst: data.sgst ? parseFloat(data.sgst) : 0,
+        cgst: data.cgst ? parseFloat(data.cgst) : 0,
+        igst: data.igst ? parseFloat(data.igst) : 0,
       };
       const url = editingId ? `${API_URL}/merchant-services/${editingId}` : `${API_URL}/merchant-services`;
       const res = await fetch(url, {
@@ -171,7 +179,12 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       state: service.state?.toString() || '',
       country: service.country?.toString() || '1',
       pincode: service.pincode?.toString() || '',
-      update_by: '1'
+      update_by: '1',
+      sgst: service.sgst?.toString() || '0',
+      cgst: service.cgst?.toString() || '0',
+      igst: service.igst?.toString() || '0',
+      start_date: service.start_date || '',
+      end_date: service.end_date || '',
     });
   };
 
@@ -253,6 +266,23 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
                     )} />
                   </div>
                 </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <Percent className="h-4 w-4" /> Tax Configuration (%)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <FormField control={form.control} name="sgst" render={({ field }) => (
+                      <FormItem><FormLabel>SGST (%)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="cgst" render={({ field }) => (
+                      <FormItem><FormLabel>CGST (%)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="igst" render={({ field }) => (
+                      <FormItem><FormLabel>IGST (%)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl></FormItem>
+                    )} />
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -265,6 +295,20 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6 space-y-8">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <Calendar className="h-4 w-4" /> Service Validity
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField control={form.control} name="start_date" render={({ field }) => (
+                      <FormItem><FormLabel>Start Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="end_date" render={({ field }) => (
+                      <FormItem><FormLabel>End Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
+                    )} />
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                     <CalendarDays className="h-4 w-4" /> Working Hours & Days
@@ -413,7 +457,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
                   <TableRow>
                     <TableHead>Service Name</TableHead>
                     <TableHead>Merchant</TableHead>
-                    <TableHead>Location</TableHead>
+                    <TableHead>Validity</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -427,10 +471,10 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
                       <TableCell className="text-sm text-slate-600">
                         {merchants?.find((m: any) => m.id === service.merchant_id)?.organization_name || `ID: ${service.merchant_id}`}
                       </TableCell>
-                      <TableCell className="text-sm text-slate-500">
+                      <TableCell className="text-xs text-slate-500">
                         <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {service.addressline1 ? `${service.addressline1}, ${service.pincode || ''}` : 'No address'}
+                          <Calendar className="h-3 w-3" />
+                          {service.start_date || 'N/A'} to {service.end_date || 'N/A'}
                         </div>
                       </TableCell>
                       <TableCell>

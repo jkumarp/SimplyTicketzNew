@@ -32,7 +32,13 @@ export const createMerchantService = async (req: Request, res: Response): Promis
       location_coordinates,
       encrypted_url,
       update_by,
-      status_sw
+      status_sw,
+      sgst,
+      cgst,
+      igst,
+      start_date,
+      end_date,
+      recurring_sw
     } = req.body;
 
     const { data, error } = await supabase
@@ -68,7 +74,13 @@ export const createMerchantService = async (req: Request, res: Response): Promis
         encrypted_url,
         update_by,
         update_date: new Date().toISOString(),
-        status_sw
+        status_sw,
+        sgst,
+        cgst,
+        igst,
+        start_date,
+        end_date,
+        recurring_sw
       }])
       .select();
 
