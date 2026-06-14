@@ -38,7 +38,8 @@ export const createMerchantService = async (req: Request, res: Response): Promis
       igst,
       start_date,
       end_date,
-      recurring_sw
+      recurring_sw,
+      city
     } = req.body;
 
     const { data, error } = await supabase
@@ -80,7 +81,8 @@ export const createMerchantService = async (req: Request, res: Response): Promis
         igst,
         start_date,
         end_date,
-        recurring_sw
+        recurring_sw,
+        city
       }])
       .select();
 
