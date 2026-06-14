@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,7 +30,8 @@ import { showSuccess, showError } from "@/utils/toast";
 import { 
   Briefcase, Loader2, Building2, MapPin, Clock, 
   CreditCard, Pencil, X, QrCode, Palette, Image as ImageIcon,
-  CalendarDays, Globe, Link as LinkIcon, ShieldAlert, Percent, Calendar, RefreshCcw
+  CalendarDays, Globe, Link as LinkIcon, ShieldAlert, Percent, Calendar, RefreshCcw,
+  MapPinned
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -58,6 +59,7 @@ const serviceSchema = z.object({
   sun_working_sw: z.boolean().default(false),
   addressline1: z.string().max(100).optional().or(z.literal('')),
   addressline2: z.string().max(100).optional().or(z.literal('')),
+  city: z.string().max(100).optional().or(z.literal('')),
   state: z.string().optional().or(z.literal('')),
   pincode: z.string().regex(/^\d*$/).optional().or(z.literal('')),
   country: z.string().default("1"),
@@ -83,6 +85,7 @@ interface ServiceTabProps {
 const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingStateId, setPendingStateId] = useState<string | null>(null);
   
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isRestricted = [4, 5, 6].includes(user.role);
@@ -96,7 +99,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       start_time: '09:00', end_time: '18:00', mon_working_sw: true,
       tue_working_sw: true, wed_working_sw: true, thu_working_sw: true,
       fri_working_sw: true, sat_working_sw: false, sun_working_sw: false,
-      addressline1: '', addressline2: '', state: '', pincode: '',
+      addressline1: '', addressline2: '', city: '', state: '', pincode: '',
       country: '1', location_coordinates: '', encrypted_url: '',
       status_sw: true, update_by: '1',
       sgst: '0', cgst: '0', igst: '0',
@@ -134,7 +137,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
   const selectedCountry = form.watch('country');
   const isRecurring = form.watch('recurring_sw');
 
-  const { data: states } = useQuery({
+  const { data: states, isSuccess: isStatesLoaded } = useQuery({
     queryKey: ['states', selectedCountry],
     queryFn: async () => {
       if (!selectedCountry) return [];
@@ -143,6 +146,17 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
     },
     enabled: !!selectedCountry
   });
+
+  // Effect to handle state population once states are loaded
+  useEffect(() => {
+    if (isStatesLoaded && pendingStateId && states) {
+      const stateExists = states.some((s: any) => s.id.toString() === pendingStateId);
+      if (stateExists) {
+        form.setValue('state', pendingStateId);
+        setPendingStateId(null);
+      }
+    }
+  }, [isStatesLoaded, states, pendingStateId, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: ServiceFormValues) => {
@@ -170,6 +184,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       queryClient.invalidateQueries({ queryKey: ['merchant-services'] });
       showSuccess(editingId ? 'Service updated!' : 'Service created!');
       setEditingId(null);
+      setPendingStateId(null);
       form.reset();
     },
     onError: (error: any) => showError(error.message)
@@ -177,17 +192,19 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
 
   const formatTimeForInput = (time: string | null) => {
     if (!time) return "";
-    // Ensure HH:mm format (strip seconds if present)
     return time.split(':').slice(0, 2).join(':');
   };
 
   const handleEdit = (service: any) => {
     setEditingId(service.id);
+    setPendingStateId(service.state?.toString() || null);
+    
     form.reset({
       ...service,
       merchant_id: service.merchant_id.toString(),
-      state: service.state?.toString() || '',
+      state: '', // Will be set by useEffect once states load
       country: service.country?.toString() || '1',
+      city: service.city || '',
       pincode: service.pincode?.toString() || '',
       update_by: '1',
       sgst: service.sgst?.toString() || '0',
@@ -197,7 +214,9 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       end_date: service.end_date || '',
       start_time: formatTimeForInput(service.start_time) || '09:00',
       end_time: formatTimeForInput(service.end_time) || '18:00',
-      recurring_sw: !!service.recurring_sw
+      recurring_sw: !!service.recurring_sw,
+      single_qr_sw: !!service.single_qr_sw,
+      status_sw: !!service.status_sw
     });
   };
 
@@ -384,7 +403,14 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
                     <FormField control={form.control} name="addressline2" render={({ field }) => (
                       <FormItem><FormLabel>Address Line 2</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                     )} />
-                    <div className="grid grid-cols-3 gap-4 md:col-span-2">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:col-span-2">
+                      <FormField control={form.control} name="city" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2"><MapPinned className="h-3.5 w-3.5" /> City</FormLabel>
+                          <FormControl><Input placeholder="City" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
                       <FormField control={form.control} name="country" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Country</FormLabel>
@@ -400,7 +426,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
                         <FormItem>
                           <FormLabel>State</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select State" /></SelectTrigger></FormControl>
                             <SelectContent>
                               {states?.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
                             </SelectContent>
@@ -470,7 +496,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
               )}
 
               {editingId && (
-                <Button variant="outline" className="w-full h-12 rounded-xl" onClick={() => { setEditingId(null); form.reset(); }}>
+                <Button variant="outline" className="w-full h-12 rounded-xl" onClick={() => { setEditingId(null); setPendingStateId(null); form.reset(); }}>
                   Cancel Editing
                 </Button>
               )}
