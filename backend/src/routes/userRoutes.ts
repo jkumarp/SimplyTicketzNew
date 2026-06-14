@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getUsers, createUser, updateUser } from '../controllers/userController';
-
+import { authorizeRoles } from '../middleware/authMiddleware';
 const router = Router();
 
 /**
@@ -12,7 +12,7 @@ const router = Router();
  *       200:
  *         description: A list of users.
  */
-router.get('/users', getUsers);
+router.get('/users', authorizeRoles(1, 2,3), getUsers);
 
 /**
  * @swagger
@@ -20,7 +20,7 @@ router.get('/users', getUsers);
  *   post:
  *     summary: Create a new user
  */
-router.post('/users', createUser);
+router.post('/users', authorizeRoles(1, 2), createUser);
 
 /**
  * @swagger
@@ -28,6 +28,6 @@ router.post('/users', createUser);
  *   put:
  *     summary: Update an existing user
  */
-router.put('/users/:id', updateUser);
+router.put('/users/:id', authorizeRoles(1, 2), updateUser);
 
 export default router;

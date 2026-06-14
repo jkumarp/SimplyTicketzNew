@@ -278,7 +278,7 @@ const CustomerTicketBooking = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Phone Number *</Label>
+                    <Label>Mobile Number *</Label>
                     <Input
                       placeholder="10-digit mobile"
                       maxLength={10}
