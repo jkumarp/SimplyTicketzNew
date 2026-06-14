@@ -77,6 +77,21 @@ const serviceSchema = z.object({
 
 type ServiceFormValues = z.infer<typeof serviceSchema>;
 
+const initialDefaultValues: ServiceFormValues = {
+  merchant_id: '', name: '', logo_image_path: '', single_qr_sw: false,
+  background_color: '#ffffff', beneficiary_name: '', account_type: 'Savings',
+  bank_account_number: '', bank_name: '', branch_name: '', bank_ifsc: '',
+  start_time: '09:00', end_time: '18:00', mon_working_sw: true,
+  tue_working_sw: true, wed_working_sw: true, thu_working_sw: true,
+  fri_working_sw: true, sat_working_sw: false, sun_working_sw: false,
+  addressline1: '', addressline2: '', city: '', state: '', pincode: '',
+  country: '1', location_coordinates: '', encrypted_url: '',
+  status_sw: true, update_by: '1',
+  sgst: '0', cgst: '0', igst: '0',
+  start_date: '', end_date: '',
+  recurring_sw: true
+};
+
 interface ServiceTabProps {
   onServiceSelect: (id: string) => void;
   selectedServiceId: string | null;
@@ -92,20 +107,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
 
   const form = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceSchema),
-    defaultValues: {
-      merchant_id: '', name: '', logo_image_path: '', single_qr_sw: false,
-      background_color: '#ffffff', beneficiary_name: '', account_type: 'Savings',
-      bank_account_number: '', bank_name: '', branch_name: '', bank_ifsc: '',
-      start_time: '09:00', end_time: '18:00', mon_working_sw: true,
-      tue_working_sw: true, wed_working_sw: true, thu_working_sw: true,
-      fri_working_sw: true, sat_working_sw: false, sun_working_sw: false,
-      addressline1: '', addressline2: '', city: '', state: '', pincode: '',
-      country: '1', location_coordinates: '', encrypted_url: '',
-      status_sw: true, update_by: '1',
-      sgst: '0', cgst: '0', igst: '0',
-      start_date: '', end_date: '',
-      recurring_sw: true
-    }
+    defaultValues: initialDefaultValues
   });
 
   const getAuthHeader = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}` });
@@ -147,7 +149,6 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
     enabled: !!selectedCountry
   });
 
-  // Effect to handle state population once states are loaded
   useEffect(() => {
     if (isStatesLoaded && pendingStateId && states) {
       const stateExists = states.some((s: any) => s.id.toString() === pendingStateId);
@@ -185,7 +186,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       showSuccess(editingId ? 'Service updated!' : 'Service created!');
       setEditingId(null);
       setPendingStateId(null);
-      form.reset();
+      form.reset(initialDefaultValues);
     },
     onError: (error: any) => showError(error.message)
   });
@@ -202,7 +203,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
     form.reset({
       ...service,
       merchant_id: service.merchant_id.toString(),
-      state: '', // Will be set by useEffect once states load
+      state: '', 
       country: service.country?.toString() || '1',
       city: service.city || '',
       pincode: service.pincode?.toString() || '',
@@ -496,7 +497,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
               )}
 
               {editingId && (
-                <Button variant="outline" className="w-full h-12 rounded-xl" onClick={() => { setEditingId(null); setPendingStateId(null); form.reset(); }}>
+                <Button variant="outline" className="w-full h-12 rounded-xl" onClick={() => { setEditingId(null); setPendingStateId(null); form.reset(initialDefaultValues); }}>
                   Cancel Editing
                 </Button>
               )}
