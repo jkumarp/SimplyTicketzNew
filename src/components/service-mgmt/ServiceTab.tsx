@@ -175,6 +175,12 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
     onError: (error: any) => showError(error.message)
   });
 
+  const formatTimeForInput = (time: string | null) => {
+    if (!time) return "";
+    // Ensure HH:mm format (strip seconds if present)
+    return time.split(':').slice(0, 2).join(':');
+  };
+
   const handleEdit = (service: any) => {
     setEditingId(service.id);
     form.reset({
@@ -189,6 +195,8 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       igst: service.igst?.toString() || '0',
       start_date: service.start_date || '',
       end_date: service.end_date || '',
+      start_time: formatTimeForInput(service.start_time) || '09:00',
+      end_time: formatTimeForInput(service.end_time) || '18:00',
       recurring_sw: !!service.recurring_sw
     });
   };
