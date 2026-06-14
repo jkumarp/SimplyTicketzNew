@@ -30,7 +30,7 @@ import { showSuccess, showError } from "@/utils/toast";
 import { 
   Briefcase, Loader2, Building2, MapPin, Clock, 
   CreditCard, Pencil, X, QrCode, Palette, Image as ImageIcon,
-  CalendarDays, Globe, Link as LinkIcon, ShieldAlert, Percent, Calendar
+  CalendarDays, Globe, Link as LinkIcon, ShieldAlert, Percent, Calendar, RefreshCcw
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -70,6 +70,7 @@ const serviceSchema = z.object({
   igst: z.string().regex(/^\d*\.?\d*$/).optional().or(z.literal('')),
   start_date: z.string().optional().or(z.literal('')),
   end_date: z.string().optional().or(z.literal('')),
+  recurring_sw: z.boolean().default(true),
 });
 
 type ServiceFormValues = z.infer<typeof serviceSchema>;
@@ -99,7 +100,8 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       country: '1', location_coordinates: '', encrypted_url: '',
       status_sw: true, update_by: '1',
       sgst: '0', cgst: '0', igst: '0',
-      start_date: '', end_date: ''
+      start_date: '', end_date: '',
+      recurring_sw: true
     }
   });
 
@@ -130,6 +132,8 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
   });
 
   const selectedCountry = form.watch('country');
+  const isRecurring = form.watch('recurring_sw');
+
   const { data: states } = useQuery({
     queryKey: ['states', selectedCountry],
     queryFn: async () => {
@@ -185,6 +189,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       igst: service.igst?.toString() || '0',
       start_date: service.start_date || '',
       end_date: service.end_date || '',
+      recurring_sw: !!service.recurring_sw
     });
   };
 
@@ -299,14 +304,36 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                     <Calendar className="h-4 w-4" /> Service Validity
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField control={form.control} name="start_date" render={({ field }) => (
-                      <FormItem><FormLabel>Start Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
-                    )} />
-                    <FormField control={form.control} name="end_date" render={({ field }) => (
-                      <FormItem><FormLabel>End Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
-                    )} />
-                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="recurring_sw"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0 mb-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="flex items-center gap-2 font-normal cursor-pointer">
+                          <RefreshCcw className="h-4 w-4 text-indigo-600" />
+                          Recurring Service (No fixed dates)
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+
+                  {!isRecurring && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <FormField control={form.control} name="start_date" render={({ field }) => (
+                        <FormItem><FormLabel>Start Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name="end_date" render={({ field }) => (
+                        <FormItem><FormLabel>End Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
+                      )} />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -474,7 +501,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
                       <TableCell className="text-xs text-slate-500">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {service.start_date || 'N/A'} to {service.end_date || 'N/A'}
+                          {service.recurring_sw ? 'Recurring' : `${service.start_date || 'N/A'} to ${service.end_date || 'N/A'}`}
                         </div>
                       </TableCell>
                       <TableCell>
