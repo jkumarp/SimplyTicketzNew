@@ -327,7 +327,7 @@ const MerchantTicketBooking = () => {
               <div className="space-y-4">
                 <h3 className="font-bold text-slate-900 flex items-center gap-2">
                   <Ticket className="h-5 w-5 text-indigo-600" />{" "}
-                  Select Categories
+                  Select Activity
                 </h3>
                 <div className="text-sm text-slate-500 mt-1">
                   {service.addressline1} {service.addressline2} {service.state} - {service.pincode}

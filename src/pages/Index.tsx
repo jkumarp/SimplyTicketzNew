@@ -8,7 +8,7 @@ import EventCard from '@/components/EventCard';
 import Footer from '@/components/Footer';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { motion } from 'framer-motion';
-import { Store, ArrowRight, Loader2, Send } from 'lucide-react';
+import { Store, ArrowRight, Loader2, Send, CheckCircle2, Zap, ShieldCheck, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -61,21 +61,16 @@ const Index = () => {
 
   const enquiryMutation = useMutation({
     mutationFn: async (data: typeof enquiryData) => {
-      // 1. Generate Guest Token first
       const guestRes = await fetch(`${API_URL}/guestLogin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: data.merchant_email })
       });
       
-      if (!guestRes.ok) {
-        throw new Error('Guest authentication failed');
-      }
-      
+      if (!guestRes.ok) throw new Error('Guest authentication failed');
       const guestAuth = await guestRes.json();
       const token = guestAuth.token;
 
-      // 2. Submit Enquiry with the generated token
       const res = await fetch(`${API_URL}/merchant-enquiries`, {
         method: 'POST',
         headers: { 
@@ -108,37 +103,88 @@ const Index = () => {
       <main className="flex-grow">
         <Hero />
         
-        {/* Merchant CTA Section */}
-        <section className="bg-white border-y py-12">
+        {/* Merchant Workflow Section */}
+        <section className="py-24 bg-white overflow-hidden">
           <div className="container px-4 md:px-8">
-            <div className="bg-indigo-50 rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
-              <div className="max-w-xl">
-                <div className="flex items-center gap-2 text-indigo-600 font-bold mb-4">
-                  <Store className="h-5 w-5" />
-                  <span>FOR PARTNERS</span>
-                </div>
-                <h2 className="text-3xl font-bold text-slate-900 mb-4">Are you an event organizer?</h2>
-                <p className="text-slate-600 text-lg">
-                  Join our network of merchants and start selling tickets to thousands of eager fans today.
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+              >
+                <span className="text-indigo-600 font-bold tracking-wider uppercase text-sm">For Event Organizers</span>
+                <h2 className="text-3xl md:text-5xl font-black text-slate-900 mt-4 mb-6">
+                  Seamless Merchant Workflow
+                </h2>
+                <p className="text-slate-500 text-lg">
+                  From registration to settlement, we've built a platform that helps you grow your event business with ease.
                 </p>
+              </motion.div>
+            </div>
+
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-100 bg-slate-50 p-4 md:p-8"
+            >
+              <img 
+                src="/merchant-workflow.jpeg" 
+                alt="SimplyTicketz Merchant Workflow" 
+                className="w-full h-auto rounded-2xl"
+              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
+                <div className="flex gap-4">
+                  <div className="bg-indigo-100 p-3 rounded-2xl h-fit">
+                    <Zap className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 mb-2">Quick Onboarding</h4>
+                    <p className="text-sm text-slate-500">Register and upload documents to get verified in record time.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="bg-emerald-100 p-3 rounded-2xl h-fit">
+                    <ShieldCheck className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 mb-2">Secure Validation</h4>
+                    <p className="text-sm text-slate-500">Use our scanning devices for instant QR ticket verification at the gate.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="bg-blue-100 p-3 rounded-2xl h-fit">
+                    <BarChart3 className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 mb-2">T+1 Settlements</h4>
+                    <p className="text-sm text-slate-500">Get your ticket sales revenue settled directly to your bank account daily.</p>
+                  </div>
+                </div>
               </div>
+            </motion.div>
+
+            <div className="mt-16 text-center">
               <Button 
                 size="lg" 
                 onClick={() => setIsEnquiryOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-6 rounded-2xl text-lg font-bold group"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-7 rounded-2xl text-xl font-bold shadow-xl shadow-indigo-200 group"
               >
-                Register as Merchant
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                Start Selling Today
+                <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
               </Button>
             </div>
           </div>
         </section>
 
-        <section className="container px-4 md:px-8 py-16">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-            <div>
-              <h2 className="text-3xl font-bold text-slate-900 mb-2">Upcoming Events</h2>
-              <p className="text-slate-500">Handpicked experiences just for you</p>
+        {/* Events Section */}
+        <section className="container px-4 md:px-8 py-24">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+            <div className="max-w-2xl">
+              <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-4">Discover Trending Events</h2>
+              <p className="text-slate-500 text-lg">Handpicked experiences from top organizers around the world.</p>
             </div>
             <CategoryFilter />
           </div>
@@ -147,12 +193,12 @@ const Index = () => {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             transition={{ duration: 0.5, staggerChildren: 0.1 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10"
           >
             {MOCK_EVENTS.map((event, index) => (
               <motion.div
                 key={event.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
@@ -162,23 +208,28 @@ const Index = () => {
           </motion.div>
         </section>
 
-        <section className="bg-indigo-600 py-20">
-          <div className="container px-4 md:px-8 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+        {/* Newsletter Section */}
+        <section className="bg-slate-900 py-24 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-500 blur-[150px] rounded-full" />
+          </div>
+          
+          <div className="container px-4 md:px-8 text-center relative z-10">
+            <h2 className="text-3xl md:text-5xl font-black text-white mb-6">
               Never miss an event again
             </h2>
-            <p className="text-indigo-100 mb-10 max-w-xl mx-auto text-lg">
+            <p className="text-slate-400 mb-12 max-w-2xl mx-auto text-lg">
               Join 50,000+ event lovers and get notified about the hottest tickets before they sell out.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-lg mx-auto">
               <input 
                 type="email" 
                 placeholder="Enter your email" 
-                className="flex-grow px-6 py-3 rounded-full border-none focus:ring-2 focus:ring-white outline-none"
+                className="flex-grow px-8 py-4 rounded-2xl bg-white/10 border border-white/20 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none backdrop-blur-sm"
               />
-              <button className="bg-slate-900 text-white px-8 py-3 rounded-full font-bold hover:bg-slate-800 transition-colors">
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-4 h-auto rounded-2xl font-bold text-lg">
                 Subscribe
-              </button>
+              </Button>
             </div>
           </div>
         </section>
@@ -186,45 +237,47 @@ const Index = () => {
 
       {/* Merchant Enquiry Dialog */}
       <Dialog open={isEnquiryOpen} onOpenChange={setIsEnquiryOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-indigo-600 flex items-center gap-2">
+            <DialogTitle className="text-2xl font-black text-indigo-600 flex items-center gap-2">
               <Store className="h-6 w-6" />
               Merchant Partnership
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-slate-500">
               Fill out the form below and our team will get back to you with onboarding details.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleEnquirySubmit} className="space-y-4 py-4">
+          <form onSubmit={handleEnquirySubmit} className="space-y-5 py-4">
             <div className="space-y-2">
-              <Label htmlFor="merchant_name">Organization / Name *</Label>
+              <Label htmlFor="merchant_name" className="font-bold text-slate-700">Organization / Name *</Label>
               <Input 
                 id="merchant_name" 
                 required 
                 placeholder="e.g. Global Events Ltd."
+                className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
                 value={enquiryData.merchant_name}
                 onChange={(e) => setEnquiryData({...enquiryData, merchant_name: e.target.value})}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="merchant_email">Email Address *</Label>
+              <Label htmlFor="merchant_email" className="font-bold text-slate-700">Email Address *</Label>
               <Input 
                 id="merchant_email" 
                 type="email" 
                 required 
                 placeholder="contact@yourcompany.com"
+                className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
                 value={enquiryData.merchant_email}
                 onChange={(e) => setEnquiryData({...enquiryData, merchant_email: e.target.value})}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="enquiry_details">Tell us about your events *</Label>
+              <Label htmlFor="enquiry_details" className="font-bold text-slate-700">Tell us about your events *</Label>
               <Textarea 
                 id="enquiry_details" 
                 required 
                 placeholder="What kind of events do you organize? (Max 500 chars)"
-                className="min-h-[120px]"
+                className="min-h-[120px] rounded-xl border-slate-200 focus:ring-indigo-500"
                 maxLength={500}
                 value={enquiryData.enquiry_details}
                 onChange={(e) => setEnquiryData({...enquiryData, enquiry_details: e.target.value})}
@@ -233,7 +286,7 @@ const Index = () => {
             <DialogFooter className="pt-4">
               <Button 
                 type="submit" 
-                className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 text-lg font-bold"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-lg font-bold rounded-2xl shadow-lg shadow-indigo-100"
                 disabled={enquiryMutation.isPending}
               >
                 {enquiryMutation.isPending ? (
