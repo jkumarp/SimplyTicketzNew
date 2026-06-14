@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 import { 
   Users, Store, Ticket, TrendingUp, 
   AlertCircle, ArrowRight,
-  BarChart3, Activity
+  BarChart3, Activity, MessageSquare
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -41,10 +41,20 @@ const AdminDashboard = () => {
     }
   });
 
+  const { data: enquiries } = useQuery({
+    queryKey: ['merchant-enquiries-count'],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/merchant-enquiries`, {
+        headers: { ...getAuthHeader() }
+      });
+      return (await res.json()).data;
+    }
+  });
+
   const stats = [
     { title: "Total Users", value: users?.length || 0, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
     { title: "Active Merchants", value: merchants?.filter((m: any) => m.status_sw).length || 0, icon: Store, color: "text-indigo-600", bg: "bg-indigo-50" },
-    { title: "Pending KYC", value: merchants?.filter((m: any) => !m.kyc_completed_sw).length || 0, icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50" },
+    { title: "New Enquiries", value: enquiries?.filter((e: any) => e.status === 'Created').length || 0, icon: MessageSquare, color: "text-purple-600", bg: "bg-purple-50" },
     { title: "Total Tickets", value: "1,284", icon: Ticket, color: "text-green-600", bg: "bg-green-50" },
   ];
 
@@ -116,6 +126,18 @@ const AdminDashboard = () => {
                     </div>
                     <h4 className="font-bold text-slate-900">Merchant Partners</h4>
                     <p className="text-sm text-slate-500 mt-1">Onboard and verify event organizers.</p>
+                  </div>
+                </Link>
+                <Link to="/admin/enquiries">
+                  <div className="group p-6 rounded-2xl border border-slate-100 bg-white hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="bg-purple-50 p-3 rounded-xl text-purple-600">
+                        <MessageSquare className="h-6 w-6" />
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                    </div>
+                    <h4 className="font-bold text-slate-900">Merchant Enquiries</h4>
+                    <p className="text-sm text-slate-500 mt-1">Review and respond to partnership requests.</p>
                   </div>
                 </Link>
               </CardContent>
