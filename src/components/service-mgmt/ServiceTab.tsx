@@ -177,6 +177,12 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
 
   const handleEdit = (service: any) => {
     setEditingId(service.id);
+    // Ensure time strings are in HH:mm format for the input type="time"
+    const formatTime = (timeStr: string) => {
+      if (!timeStr) return '';
+      return timeStr.substring(0, 5);
+    };
+
     form.reset({
       ...service,
       merchant_id: service.merchant_id.toString(),
@@ -189,6 +195,8 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       igst: service.igst?.toString() || '0',
       start_date: service.start_date || '',
       end_date: service.end_date || '',
+      start_time: formatTime(service.start_time),
+      end_time: formatTime(service.end_time),
       recurring_sw: !!service.recurring_sw
     });
   };
