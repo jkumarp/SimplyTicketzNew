@@ -31,7 +31,7 @@ import {
   Briefcase, Loader2, Building2, MapPin, Clock, 
   CreditCard, Pencil, X, QrCode, Palette, Image as ImageIcon,
   CalendarDays, Globe, Link as LinkIcon, ShieldAlert, Percent, Calendar, RefreshCcw,
-  MapPinned
+  MapPinned, History
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -73,6 +73,7 @@ const serviceSchema = z.object({
   start_date: z.string().optional().or(z.literal('')),
   end_date: z.string().optional().or(z.literal('')),
   recurring_sw: z.boolean().default(true),
+  advance_booking_days: z.string().regex(/^\d*$/).default("0"),
 });
 
 type ServiceFormValues = z.infer<typeof serviceSchema>;
@@ -89,7 +90,8 @@ const initialDefaultValues: ServiceFormValues = {
   status_sw: true, update_by: '1',
   sgst: '0', cgst: '0', igst: '0',
   start_date: '', end_date: '',
-  recurring_sw: true
+  recurring_sw: true,
+  advance_booking_days: '0'
 };
 
 interface ServiceTabProps {
@@ -173,6 +175,7 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
         igst: data.igst ? parseFloat(data.igst) : 0,
         start_date: data.start_date || null,
         end_date: data.end_date || null,
+        advance_booking_days: parseInt(data.advance_booking_days || "0"),
       };
       const url = editingId ? `${API_URL}/merchant-services/${editingId}` : `${API_URL}/merchant-services`;
       const res = await fetch(url, {
@@ -219,7 +222,8 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       end_time: formatTimeForInput(service.end_time) || '18:00',
       recurring_sw: !!service.recurring_sw,
       single_qr_sw: !!service.single_qr_sw,
-      status_sw: !!service.status_sw
+      status_sw: !!service.status_sw,
+      advance_booking_days: service.advance_booking_days?.toString() || '0'
     });
   };
 
@@ -335,24 +339,43 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
                     <Calendar className="h-4 w-4" /> Service Validity
                   </h3>
                   
-                  <FormField
-                    control={form.control}
-                    name="recurring_sw"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-2 space-y-0 mb-4">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormLabel className="flex items-center gap-2 font-normal cursor-pointer">
-                          <RefreshCcw className="h-4 w-4 text-indigo-600" />
-                          Recurring Service (No fixed dates)
-                        </FormLabel>
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <FormField
+                      control={form.control}
+                      name="recurring_sw"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0 mb-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormLabel className="flex items-center gap-2 font-normal cursor-pointer">
+                            <RefreshCcw className="h-4 w-4 text-indigo-600" />
+                            Recurring Service (No fixed dates)
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="advance_booking_days"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <History className="h-4 w-4 text-indigo-600" />
+                            Advance Booking Days
+                          </FormLabel>
+                          <FormControl>
+                            <Input type="number" min="0" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   {!isRecurring && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
