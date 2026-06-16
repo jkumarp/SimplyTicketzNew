@@ -25,6 +25,7 @@ import {
   Settings,
   Ticket,
   Users,
+  CalendarX,
 } from "lucide-react";
 
 const API_URL = "http://localhost:5000/api";
@@ -226,6 +227,17 @@ const MerchantDashboard = () => {
                                   className="rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-600 hover:text-white"
                                 >
                                   Manage Tickets
+                                </Button>
+                              </Link>
+
+                              <Link to={`/merchant/holidays/${service.id}`}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 gap-1"
+                                >
+                                  <CalendarX className="h-4 w-4" />
+                                  Holidays
                                 </Button>
                               </Link>
                             </div>
