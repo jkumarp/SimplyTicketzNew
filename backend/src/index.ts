@@ -18,6 +18,7 @@ import countryRoutes from './routes/countryRoutes';
 import stateRoutes from './routes/stateRoutes';
 import userTypeRoutes from './routes/userTypeRoutes';
 import merchantEnquiryRoutes from './routes/merchantEnquiryRoutes';
+import merchantServiceHolidayRoutes from './routes/merchantServiceHolidayRoutes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 
@@ -63,6 +64,7 @@ app.use('/api', ticketRoutes);
 app.use('/api', ticketDetailRoutes);
 app.use('/api', invoiceRoutes);
 app.use('/api', invoiceDetailRoutes);
+app.use('/api', merchantServiceHolidayRoutes);
 
 
 
