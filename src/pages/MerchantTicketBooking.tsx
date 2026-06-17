@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { format, parseISO, isSameDay } from "date-fns";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SiteMapDialog from "@/components/SiteMapDialog";
@@ -10,7 +11,6 @@ import { API_URL } from "@/config";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -27,6 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { showError, showSuccess } from "@/utils/toast";
 import {
   ArrowLeft,
@@ -40,7 +46,9 @@ import {
   Ticket,
   User,
   Map as MapIcon,
+  CalendarDays,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface CategoryBooking {
   adult: number;
@@ -82,6 +90,19 @@ const MerchantTicketBooking = () => {
       });
       const data = await res.json();
       return data.data.find((s: any) => s.id.toString() === serviceId);
+    },
+    enabled: !!serviceId,
+  });
+
+  // Fetch valid booking dates from the new backend endpoint
+  const { data: calendarData, isLoading: isLoadingCalendar } = useQuery({
+    queryKey: ["service-calendar", serviceId],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/merchant-services/booking-calendar?serviceId=${serviceId}`, {
+        headers: getAuthHeader(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch calendar data");
+      return (await res.json()).data; // Array of valid date strings
     },
     enabled: !!serviceId,
   });
@@ -219,6 +240,13 @@ const MerchantTicketBooking = () => {
 
   const { total, count } = calculateTotal();
 
+  // Helper to check if a date is valid based on backend data
+  const isDateDisabled = (date: Date) => {
+    if (!calendarData) return true;
+    const dateStr = format(date, "yyyy-MM-dd");
+    return !calendarData.includes(dateStr);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
@@ -339,6 +367,9 @@ const MerchantTicketBooking = () => {
                     bookingDate: new Date().toISOString().split("T")[0],
                     timeslotId: "",
                   };
+                  
+                  const selectedDate = data.bookingDate ? parseISO(data.bookingDate) : undefined;
+
                   return (
                     <Card
                       key={category.id}
@@ -400,15 +431,34 @@ const MerchantTicketBooking = () => {
                                   <CalendarIcon className="h-3 w-3" />{" "}
                                   Visit Date
                                 </Label>
-                                <Input
-                                  type="date"
-                                  value={data.bookingDate}
-                                  onChange={(e) =>
-                                    updateCategoryData(category.id, {
-                                      bookingDate: e.target.value,
-                                    })}
-                                  className="h-10 text-xs"
-                                />
+                                
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant={"outline"}
+                                      className={cn(
+                                        "w-full justify-start text-left font-normal h-10 text-xs rounded-xl",
+                                        !data.bookingDate && "text-muted-foreground"
+                                      )}
+                                    >
+                                      <CalendarDays className="mr-2 h-4 w-4 text-indigo-600" />
+                                      {data.bookingDate ? format(selectedDate!, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={selectedDate}
+                                      onSelect={(date) => 
+                                        updateCategoryData(category.id, {
+                                          bookingDate: date ? format(date, "yyyy-MM-dd") : ""
+                                        })
+                                      }
+                                      disabled={isDateDisabled}
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
                               </div>
                               <div className="space-y-2">
                                 <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
@@ -421,7 +471,7 @@ const MerchantTicketBooking = () => {
                                       timeslotId: v,
                                     })}
                                 >
-                                  <SelectTrigger className="h-10 text-xs">
+                                  <SelectTrigger className="h-10 text-xs rounded-xl">
                                     <SelectValue placeholder="Select Slot" />
                                   </SelectTrigger>
                                   <SelectContent>
