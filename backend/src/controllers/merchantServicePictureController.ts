@@ -69,10 +69,9 @@ export const getPictureUrl = async (req: Request, res: Response): Promise<void> 
 
 export const getMerchantServicePictures = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { merchantId, serviceId, categoryId } = req.query;
+    const { serviceId, categoryId } = req.query;
     let query = supabase.schema('master').from('merchant_service_picture').select('*');
-
-    if (merchantId) query = query.eq('merchant_id', merchantId);
+   
     if (serviceId) query = query.eq('service_id', serviceId);
     if (categoryId) query = query.eq('category_id', categoryId);
 
