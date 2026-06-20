@@ -231,9 +231,7 @@ export const getMerchantServiceBookingCal = async (req: Request, res: Response):
 
     res.status(200).json({
       success: true,
-      minDate: new Date(today),
-      maxDate:maxDate,
-      holidays:validDates
+      data:validDates
     });
 
   } catch (err) {
