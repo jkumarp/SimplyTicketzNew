@@ -38,7 +38,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { showError, showSuccess } from "@/utils/toast";
 import {
   ArrowLeft,
-  CalendarDays as CalendarIcon,
+  CalendarDays,
   Clock,
   Image as ImageIcon,
   Loader2,
@@ -48,6 +48,7 @@ import {
   Receipt,
   Ticket,
   User,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -321,9 +322,9 @@ const MerchantTicketBooking = () => {
         {/* Dashboard Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Main Booking Controls */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 lg:col-span-2 gap-8">
+          <div className="lg:col-span-2 space-y-8">
             {/* Customer Information Card */}
-            <Card className="lg:col-span-2 shadow-sm border-slate-200 bg-white overflow-hidden">
+            <Card className="shadow-sm border-slate-200 bg-white overflow-hidden">
               <CardHeader className="bg-slate-50/70 border-b border-slate-100 py-4">
                 <CardTitle className="text-base font-semibold flex items-center gap-2 text-slate-800">
                   <User className="h-4 w-4 text-indigo-600" /> Customer Details
@@ -457,7 +458,7 @@ const MerchantTicketBooking = () => {
                         </div>
 
                         {/* Pricing Displays */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className={cn("grid gap-4", category.age_restriction_sw ? "grid-cols-2" : "grid-cols-1")}>
                           <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100">
                             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                               Adult Fare
@@ -466,15 +467,33 @@ const MerchantTicketBooking = () => {
                               ₹{parseFloat(category.adult_price).toFixed(2)}
                             </span>
                           </div>
-                          <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100">
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                              Child Fare
-                            </span>
-                            <span className="text-xl font-black text-slate-800">
-                              ₹{category.child_price || "0.00"}
-                            </span>
-                          </div>
+                          {category.age_restriction_sw && (
+                            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 animate-in fade-in slide-in-from-top-1 duration-200">
+                              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                                Child Fare
+                              </span>
+                              <span className="text-xl font-black text-slate-800">
+                                ₹{parseFloat(category.child_price || "0.00").toFixed(2)}
+                              </span>
+                            </div>
+                          )}
                         </div>
+
+                        {/* Age Restriction Limits & Rules */}
+                        {category.age_restriction_sw && (category.child_age_limit || category.free_age_limit) && (
+                          <div className="text-xs text-indigo-700 bg-indigo-50/50 rounded-xl p-3.5 border border-indigo-100 flex flex-col gap-1.5 animate-in fade-in duration-200">
+                            <span className="font-bold flex items-center gap-1.5 text-indigo-800">
+                              <ShieldAlert className="h-4 w-4 text-indigo-500 shrink-0" />
+                              Age Admission Rules:
+                            </span>
+                            {category.child_age_limit && (
+                              <p>• Child tickets are eligible for children up to <strong>{category.child_age_limit}</strong> years of age.</p>
+                            )}
+                            {category.free_age_limit && (
+                              <p>• Free entry is permitted for toddlers/infants under <strong>{category.free_age_limit}</strong> years of age.</p>
+                            )}
+                          </div>
+                        )}
 
                         {/* Per-Category Schedule */}
                         <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-100">
@@ -561,38 +580,40 @@ const MerchantTicketBooking = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between rounded-xl border bg-white p-3">
-                          <span className="text-xs font-bold text-slate-600">
-                            Child
-                          </span>
-                          <div className="flex items-center gap-3">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-7 w-7 rounded-full"
-                              disabled={data.child === 0}
-                              onClick={() =>
-                                updateCategoryData(category.id, {
-                                  child: Math.max(0, data.child - 1),
-                                })}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-4 text-center font-bold text-sm">
-                              {data.child}
+                        {category.age_restriction_sw && (
+                          <div className="flex items-center justify-between rounded-xl border bg-white p-3 animate-in fade-in duration-200">
+                            <span className="text-xs font-bold text-slate-600">
+                              Child
                             </span>
-                            <Button
-                              size="icon"
-                              className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                              onClick={() =>
-                                updateCategoryData(category.id, {
-                                  child: data.child + 1,
-                                })}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
+                            <div className="flex items-center gap-3">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7 rounded-full"
+                                disabled={data.child === 0}
+                                onClick={() =>
+                                  updateCategoryData(category.id, {
+                                    child: Math.max(0, data.child - 1),
+                                  })}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-4 text-center font-bold text-sm">
+                                {data.child}
+                              </span>
+                              <Button
+                                size="icon"
+                                className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                                onClick={() =>
+                                  updateCategoryData(category.id, {
+                                    child: data.child + 1,
+                                  })}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </Card>
@@ -654,7 +675,7 @@ const MerchantTicketBooking = () => {
                               </div>
                               <div className="flex items-center gap-3 text-[11px] font-medium text-slate-500">
                                 <span className="flex items-center gap-1">
-                                  <CalendarIcon className="h-3 w-3 text-slate-400" />
+                                  <CalendarDays className="h-3 w-3 text-slate-400" />
                                   {" "}
                                   {data.bookingDate || "Date Pending"}
                                 </span>
