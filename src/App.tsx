@@ -17,6 +17,7 @@ import CustomerTicketBooking from "./pages/CustomerTicketBooking";
 import ViewSiteMap from "./pages/ViewSiteMap";
 import AdminManageEnquiry from "./pages/AdminManageEnquiry";
 import MerchantServiceHolidays from "./pages/MerchantServiceHolidays";
+import MerchantServicePicture from "./pages/MerchantServicePicture";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/merchant/manage/:serviceId" element={<MerchantManageTickets />} />
           <Route path="/merchant/print/:ticketId" element={<MerchantPrintTicket />} />
           <Route path="/merchant/holidays/:serviceId" element={<MerchantServiceHolidays />} />
+          <Route path="/merchant/pictures/:serviceId" element={<MerchantServicePicture />} />
           <Route path="/book/:serviceId" element={<CustomerTicketBooking />} />
           <Route path="/view-site-map" element={<ViewSiteMap />} />
           <Route path="*" element={<NotFound />} />

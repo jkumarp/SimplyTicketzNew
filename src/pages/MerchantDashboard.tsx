@@ -26,6 +26,7 @@ import {
   Ticket,
   Users,
   CalendarX,
+  Image as ImageIcon,
 } from "lucide-react";
 
 const API_URL = "http://localhost:5000/api";
@@ -227,6 +228,17 @@ const MerchantDashboard = () => {
                                   className="rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-600 hover:text-white"
                                 >
                                   Manage Tickets
+                                </Button>
+                              </Link>
+
+                              <Link to={`/merchant/pictures/${service.id}`}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 gap-1"
+                                >
+                                  <ImageIcon className="h-4 w-4" />
+                                  Pictures
                                 </Button>
                               </Link>
 
