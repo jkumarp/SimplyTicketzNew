@@ -1,6 +1,72 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase.ts';
 
+/**
+ * Uploads a picture to the 'merchant_service_picture' Supabase bucket.
+ */
+export const uploadServicePicture = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
+    }
+
+    const file = req.file;
+    const fileExt = file.originalname.split('.').pop();
+    const fileName = `${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`;
+    const filePath = fileName;
+
+    const { data, error } = await supabase.storage
+      .from('merchant_service_picture')
+      .upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false
+      });
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Picture uploaded successfully',
+      data: { path: data.path }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+/**
+ * Generates a signed URL for a picture.
+ */
+export const getPictureUrl = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { path } = req.query;
+    if (!path || typeof path !== 'string') {
+      res.status(400).json({ error: 'File path is required' });
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from('merchant_service_picture')
+      .createSignedUrl(path, 3600); // 1 hour validity
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: data.signedUrl
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 export const getMerchantServicePictures = async (req: Request, res: Response): Promise<void> => {
   try {
     const { merchantId, serviceId, categoryId } = req.query;
@@ -90,6 +156,20 @@ export const deleteMerchantServicePicture = async (req: Request, res: Response):
   const { id } = req.params;
 
   try {
+    // First, get the record to find the picture_id (path) for storage deletion
+    const { data: record } = await supabase
+      .schema('master')
+      .from('merchant_service_picture')
+      .select('picture_id')
+      .eq('id', id)
+      .single();
+
+    if (record?.picture_id) {
+      await supabase.storage
+        .from('merchant_service_picture')
+        .remove([record.picture_id]);
+    }
+
     const { error } = await supabase
       .schema('master')
       .from('merchant_service_picture')
@@ -103,7 +183,7 @@ export const deleteMerchantServicePicture = async (req: Request, res: Response):
 
     res.status(200).json({
       success: true,
-      message: 'Picture record deleted successfully',
+      message: 'Picture record and file deleted successfully',
     });
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
