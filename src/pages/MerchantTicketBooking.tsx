@@ -38,7 +38,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { showError, showSuccess } from "@/utils/toast";
 import {
   ArrowLeft,
-  CalendarDays,
+  CalendarDays as CalendarIcon,
   Clock,
   Image as ImageIcon,
   Loader2,
@@ -109,7 +109,8 @@ const MerchantTicketBooking = () => {
         },
       );
       if (!res.ok) throw new Error("Failed to fetch calendar data");
-      return (await res.json()).data;
+      const json = await res.json();
+      return json.data;
     },
     enabled: !!serviceId,
   });
@@ -244,9 +245,11 @@ const MerchantTicketBooking = () => {
       showError(err.message);
     }
   };
+
   const handleOpenModal = (serviceId: number, categoryId: number) => {
     setCurrentCategory({ serviceId, categoryId });
   };
+
   const isDateDisabled = (date: Date) => {
     if (!calendarData) return true;
     const dateStr = format(date, "yyyy-MM-dd");
@@ -401,7 +404,7 @@ const MerchantTicketBooking = () => {
             </Card>
 
             {/* Ticket Activities Registry */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="space-y-4">
               <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 px-1">
                 <Ticket className="h-5 w-5 text-indigo-600" />{" "}
                 Select Activities & Passes
@@ -502,15 +505,40 @@ const MerchantTicketBooking = () => {
                               <CalendarIcon className="h-3 w-3" />{" "}
                               Visit Date
                             </Label>
-                            <Input
-                              type="date"
-                              value={data.bookingDate}
-                              onChange={(e) =>
-                                updateCategoryData(category.id, {
-                                  bookingDate: e.target.value,
-                                })}
-                              className="h-10 text-xs"
-                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full h-10 text-xs font-normal justify-start rounded-xl border-slate-200 focus:ring-indigo-500 bg-white",
+                                    !data.bookingDate && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4 text-slate-400" />
+                                  {data.bookingDate ? (
+                                    format(parseISO(data.bookingDate), "PPP")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0 rounded-2xl" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={selectedDate}
+                                  onSelect={(date) => {
+                                    if (date) {
+                                      const dateStr = format(date, "yyyy-MM-dd");
+                                      updateCategoryData(category.id, {
+                                        bookingDate: dateStr,
+                                      });
+                                    }
+                                  }}
+                                  disabled={isDateDisabled}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
                           </div>
                           <div className="space-y-2">
                             <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
@@ -675,7 +703,7 @@ const MerchantTicketBooking = () => {
                               </div>
                               <div className="flex items-center gap-3 text-[11px] font-medium text-slate-500">
                                 <span className="flex items-center gap-1">
-                                  <CalendarDays className="h-3 w-3 text-slate-400" />
+                                  <CalendarIcon className="h-3 w-3 text-slate-400" />
                                   {" "}
                                   {data.bookingDate || "Date Pending"}
                                 </span>
