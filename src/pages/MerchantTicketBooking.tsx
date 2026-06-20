@@ -3,11 +3,12 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { format, parseISO, isSameDay } from "date-fns";
+import { format, parseISO } from "date-fns";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SiteMapDialog from "@/components/SiteMapDialog";
 import { API_URL } from "@/config";
+import { ModalPictureShow } from "@/components/ModelPictureShow";
 
 import {
   Card,
@@ -37,17 +38,16 @@ import { Calendar } from "@/components/ui/calendar";
 import { showError, showSuccess } from "@/utils/toast";
 import {
   ArrowLeft,
-  Calendar as CalendarIcon,
-  ChevronRight,
+  CalendarDays,
   Clock,
+  Image as ImageIcon,
   Loader2,
+  MapPin,
   Minus,
   Plus,
-  ShoppingCart,
+  Receipt,
   Ticket,
   User,
-  Map as MapIcon,
-  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,10 +68,12 @@ const MerchantTicketBooking = () => {
   const { serviceId } = useParams();
   const navigate = useNavigate();
 
+  const [currentCategory, setCurrentCategory] = useState<
+    { serviceId: number; categoryId: number } | null
+  >(null);
   const [bookingState, setBookingState] = useState<BookingState>({
     counts: {},
   });
-
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     phone: "",
@@ -83,6 +85,7 @@ const MerchantTicketBooking = () => {
     "Authorization": `Bearer ${localStorage.getItem("token")}`,
   });
 
+  // Queries
   const { data: service, isLoading: isLoadingService } = useQuery({
     queryKey: ["merchant-service", serviceId],
     queryFn: async () => {
@@ -95,16 +98,17 @@ const MerchantTicketBooking = () => {
     enabled: !!serviceId,
   });
 
-  
-  // Fetch valid booking dates from the new backend endpoint
-  const { data: calendarData, isLoading: isLoadingCalendar } = useQuery({
+  const { data: calendarData } = useQuery({
     queryKey: ["service-calendar", serviceId],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/merchant-services/booking-calendar?serviceId=${serviceId}`, {
-        headers: getAuthHeader(),
-      });
+      const res = await fetch(
+        `${API_URL}/merchant-services/booking-calendar?serviceId=${serviceId}`,
+        {
+          headers: getAuthHeader(),
+        },
+      );
       if (!res.ok) throw new Error("Failed to fetch calendar data");
-      return (await res.json()).data; // Array of valid date strings
+      return (await res.json()).data;
     },
     enabled: !!serviceId,
   });
@@ -114,7 +118,9 @@ const MerchantTicketBooking = () => {
     queryFn: async () => {
       const res = await fetch(
         `${API_URL}/ticket-categories?merchantServiceId=${serviceId}`,
-        { headers: getAuthHeader() },
+        {
+          headers: getAuthHeader(),
+        },
       );
       return (await res.json()).data;
     },
@@ -127,13 +133,16 @@ const MerchantTicketBooking = () => {
       if (!service?.merchant_id) return [];
       const res = await fetch(
         `${API_URL}/ticket-timeslots-by-service?serviceId=${service.id}`,
-        { headers: getAuthHeader() },
+        {
+          headers: getAuthHeader(),
+        },
       );
       return (await res.json()).data;
     },
     enabled: !!service?.merchant_id,
   });
 
+  // State Management
   const updateCategoryData = (
     categoryId: string,
     updates: Partial<CategoryBooking>,
@@ -142,7 +151,7 @@ const MerchantTicketBooking = () => {
       const current = prev.counts[categoryId] || {
         adult: 0,
         child: 0,
-        bookingDate: new Date().toISOString().split("T")[0],
+        bookingDate: "", // Keep empty initially so they choose a valid date
         timeslotId: "",
       };
       return {
@@ -170,6 +179,7 @@ const MerchantTicketBooking = () => {
     return { total, count };
   };
 
+  // Mutations
   const bookingMutation = useMutation({
     mutationFn: async (payload: any) => {
       const res = await fetch(`${API_URL}/tickets/book`, {
@@ -181,7 +191,7 @@ const MerchantTicketBooking = () => {
       return res.json();
     },
     onSuccess: (data) => {
-      showSuccess("Booking confirmed!");
+      showSuccess("Booking confirmed successfully!");
       navigate(`/merchant/print/${data.data[0].ticket.id}`);
     },
     onError: (err: any) => showError(err.message),
@@ -191,27 +201,33 @@ const MerchantTicketBooking = () => {
     const { count } = calculateTotal();
     if (count === 0) return showError("Please select at least one ticket");
     if (!customerInfo.name || !customerInfo.phone) {
-      return showError("Please fill customer details");
+      return showError("Please fill out all required customer details");
     }
 
-    const selectedCategories = Object.entries(bookingState.counts)
-      .filter(([_, data]) => data.adult > 0 || data.child > 0)
-      .map(([catId, data]) => {
-        if (!data.timeslotId) {
-          throw new Error(
-            `Please select a timeslot for all selected categories`,
-          );
-        }
-        return {
-          ticket_category_id: parseInt(catId),
-          adult_count: data.adult,
-          child_count: data.child,
-          booking_date: data.bookingDate,
-          ticket_timeslot_id: parseInt(data.timeslotId),
-        };
-      });
-
     try {
+      const selectedCategories = Object.entries(bookingState.counts)
+        .filter(([_, data]) => data.adult > 0 || data.child > 0)
+        .map(([catId, data]) => {
+          if (!data.bookingDate) {
+            throw new Error(
+              "Please select a visit date for all selected categories",
+            );
+          }
+          if (!data.timeslotId) {
+            throw new Error(
+              "Please select a timeslot for all selected categories",
+            );
+          }
+
+          return {
+            ticket_category_id: parseInt(catId),
+            adult_count: data.adult,
+            child_count: data.child,
+            booking_date: data.bookingDate,
+            ticket_timeslot_id: parseInt(data.timeslotId),
+          };
+        });
+
       bookingMutation.mutate({
         customer_name: customerInfo.name,
         customer_phone: customerInfo.phone,
@@ -227,13 +243,26 @@ const MerchantTicketBooking = () => {
       showError(err.message);
     }
   };
+  const handleOpenModal = (serviceId: number, categoryId: number) => {
+    setCurrentCategory({ serviceId, categoryId });
+  };
+  const isDateDisabled = (date: Date) => {
+    if (!calendarData) return true;
+    const dateStr = format(date, "yyyy-MM-dd");
+    return !calendarData.includes(dateStr);
+  };
 
   if (isLoadingService || isLoadingCategories) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div className="min-h-screen bg-slate-50/50 flex flex-col">
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-indigo-600" />
+          <div className="text-center space-y-3">
+            <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mx-auto" />
+            <p className="text-sm font-medium text-slate-500">
+              Loading workspace configurations...
+            </p>
+          </div>
         </div>
         <Footer />
       </div>
@@ -242,432 +271,500 @@ const MerchantTicketBooking = () => {
 
   const { total, count } = calculateTotal();
 
-  // Helper to check if a date is valid based on backend data
-  const isDateDisabled = (date: Date) => {
-    if (!calendarData) return true;
-    const dateStr = format(date, "yyyy-MM-dd");
-    return !calendarData.includes(dateStr);
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50/50 flex flex-col font-sans antialiased">
       <Navbar />
-      <main className="flex-grow container px-4 md:px-8 py-12">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-                className="rounded-full"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">
-                  {service?.name}
-                </h1>
-                <p className="text-slate-500">
-                  Configure booking and customer details
-                </p>
+
+      <main className="flex-grow container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-200">
+          <div className="flex items-start gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="rounded-xl bg-white shadow-sm hover:bg-slate-50 shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4 text-slate-600" />
+            </Button>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                {service?.name}
+              </h1>
+              <div className="flex items-center gap-1.5 text-sm text-slate-500 mt-1">
+                <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span>
+                  {[
+                    service?.addressline1,
+                    service?.addressline2,
+                    service?.state,
+                  ].filter(Boolean).join(", ")}
+                  {service?.pincode ? ` - ${service.pincode}` : ""}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              {/* Customer Details Card */}
-              <Card className="shadow-md border-indigo-100">
-                <CardHeader className="bg-indigo-50/30 border-b">
-                  <CardTitle className="text-lg flex items-center justify-between w-full text-indigo-700">
-                    <div className="flex items-center gap-2">
-                      <User className="h-5 w-5" /> Customer Information
-                    </div>
-                    <SiteMapDialog 
-                      coordinates={service?.location_coordinates} 
-                      trigger={
-                        <Button variant="link" className="text-indigo-600 h-auto p-0 text-xs font-bold flex items-center gap-1">
-                          <MapIcon className="h-3 w-3" /> View Site Map
-                        </Button>
-                      }
-                    />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Full Name *</Label>
-                    <Input
-                      placeholder="John Doe"
-                      value={customerInfo.name}
-                      onChange={(e) =>
-                        setCustomerInfo({
-                          ...customerInfo,
-                          name: e.target.value,
-                        })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Mobile Number *</Label>
-                    <Input
-                      placeholder="10-digit mobile"
-                      maxLength={10}
-                      value={customerInfo.phone}
-                      onChange={(e) =>
-                        setCustomerInfo({
-                          ...customerInfo,
-                          phone: e.target.value,
-                        })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email Address</Label>
-                    <Input
-                      type="email"
-                      placeholder="customer@example.com"
-                      value={customerInfo.email}
-                      onChange={(e) =>
-                        setCustomerInfo({
-                          ...customerInfo,
-                          email: e.target.value,
-                        })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Payment Mode</Label>
-                    <Select
-                      value={customerInfo.payment_mode}
-                      onValueChange={(v) =>
-                        setCustomerInfo({ ...customerInfo, payment_mode: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CASH">Cash</SelectItem>
-                        <SelectItem value="UPI">UPI</SelectItem>
-                        <SelectItem value="CARD">Card</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
+          <SiteMapDialog
+            coordinates={service?.location_coordinates}
+            trigger={
+              <Button
+                variant="outline"
+                className="bg-white text-slate-700 font-medium shadow-sm gap-2"
+              >
+                <MapPin className="h-4 w-4 text-indigo-500" /> View Site Map
+              </Button>
+            }
+          />
+        </div>
 
-              {/* Categories */}
-              <div className="space-y-4">
-                <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                  <Ticket className="h-5 w-5 text-indigo-600" />{" "}
-                  Select Activity
-                </h3>
-                <div className="text-sm text-slate-500 mt-1">
-                  {service.addressline1} {service.addressline2} {service.state} - {service.pincode}
+        {/* Dashboard Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          {/* Main Booking Controls */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Customer Information Card */}
+            <Card className="shadow-sm border-slate-200 bg-white overflow-hidden">
+              <CardHeader className="bg-slate-50/70 border-b border-slate-100 py-4">
+                <CardTitle className="text-base font-semibold flex items-center gap-2 text-slate-800">
+                  <User className="h-4 w-4 text-indigo-600" /> Customer Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <Label className="text-slate-600 font-medium">
+                    Full Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder="e.g. John Doe"
+                    className="rounded-xl border-slate-200 focus-visible:ring-indigo-500"
+                    value={customerInfo.name}
+                    onChange={(e) =>
+                      setCustomerInfo({
+                        ...customerInfo,
+                        name: e.target.value,
+                      })}
+                  />
                 </div>
-                {categories?.map((category: any) => {
-                  const data = bookingState.counts[category.id] || {
-                    adult: 0,
-                    child: 0,
-                    bookingDate: new Date().toISOString().split("T")[0],
-                    timeslotId: "",
-                  };
-                  
-                  const selectedDate = data.bookingDate ? parseISO(data.bookingDate) : undefined;
+                <div className="space-y-2">
+                  <Label className="text-slate-600 font-medium">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
+                    className="rounded-xl border-slate-200 focus-visible:ring-indigo-500"
+                    value={customerInfo.phone}
+                    onChange={(e) =>
+                      setCustomerInfo({
+                        ...customerInfo,
+                        phone: e.target.value,
+                      })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-600 font-medium">
+                    Email Address
+                  </Label>
+                  <Input
+                    type="email"
+                    placeholder="name@company.com"
+                    className="rounded-xl border-slate-200 focus-visible:ring-indigo-500"
+                    value={customerInfo.email}
+                    onChange={(e) =>
+                      setCustomerInfo({
+                        ...customerInfo,
+                        email: e.target.value,
+                      })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-600 font-medium">
+                    Payment Method
+                  </Label>
+                  <Select
+                    value={customerInfo.payment_mode}
+                    onValueChange={(v) =>
+                      setCustomerInfo({ ...customerInfo, payment_mode: v })}
+                  >
+                    <SelectTrigger className="rounded-xl border-slate-200 focus:ring-indigo-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CASH">Cash Payment</SelectItem>
+                      <SelectItem value="UPI">UPI Transfer</SelectItem>
+                      <SelectItem value="CARD">Credit/Debit Card</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
 
-                  return (
-                    <Card
-                      key={category.id}
-                      className="group overflow-hidden border-0 bg-white shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-                    >
-                      <CardContent className="p-0">
-                        <div className="flex flex-col lg:flex-row">
-                          {/* Left Section */}
-                          <div className="flex-1 p-6">
-                            <div className="flex items-center justify-between mb-3">
-                              <div>
-                                <h4 className="text-xl font-bold text-slate-900">
-                                  {category.name}
-                                </h4>
-                                <p className="text-sm text-slate-500 mt-1">
-                                  {category.special_instruction ||
-                                    "No special instructions"}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
-                                  Available
-                                </Badge>
-                                <SiteMapDialog 
-                                  coordinates={service?.location_coordinates} 
-                                  trigger={
-                                    <Button variant="link" className="text-indigo-600 h-auto p-0 text-xs font-bold flex items-center gap-1">
-                                      <MapIcon className="h-3 w-3" /> View Site Map
-                                    </Button>
-                                  }
-                                />
-                              </div>
-                            </div>
+            {/* Ticket Activities Registry */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 px-1">
+                <Ticket className="h-5 w-5 text-indigo-600" />{" "}
+                Select Activities & Passes
+              </h3>
 
-                            {/* Pricing */}
-                            <div className="grid grid-cols-2 gap-3 mt-5">
-                              <div className="rounded-xl bg-gradient-to-r from-indigo-50 to-indigo-100 p-4 border border-indigo-100">
-                                <p className="text-xs uppercase font-semibold text-slate-500">
-                                  Adult
-                                </p>
-                                <p className="text-2xl font-bold text-indigo-700">
-                                  ₹{category.adult_price}
-                                </p>
-                              </div>
-                              <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100 p-4 border border-emerald-100">
-                                <p className="text-xs uppercase font-semibold text-slate-500">
-                                  Child
-                                </p>
-                                <p className="text-2xl font-bold text-emerald-700">
-                                  ₹{category.child_price || "0.00"}
-                                </p>
-                              </div>
-                            </div>
+              {categories?.map((category: any) => {
+                const data = bookingState.counts[category.id] || {
+                  adult: 0,
+                  child: 0,
+                  bookingDate: "",
+                  timeslotId: "",
+                };
 
-                            {/* Per-Category Schedule */}
-                            <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-100">
-                              <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                                  <CalendarIcon className="h-3 w-3" />{" "}
-                                  Visit Date
-                                </Label>
-                                
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant={"outline"}
-                                      className={cn(
-                                        "w-full justify-start text-left font-normal h-10 text-xs rounded-xl",
-                                        !data.bookingDate && "text-muted-foreground"
-                                      )}
-                                    >
-                                      <CalendarDays className="mr-2 h-4 w-4 text-indigo-600" />
-                                      {data.bookingDate ? format(selectedDate!, "PPP") : <span>Pick a date</span>}
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                      mode="single"
-                                      selected={selectedDate}
-                                      onSelect={(date) => 
-                                        updateCategoryData(category.id, {
-                                          bookingDate: date ? format(date, "yyyy-MM-dd") : ""
-                                        })
-                                      }
-                                      disabled={isDateDisabled}
-                                      initialFocus
-                                    />
-                                  </PopoverContent>
-                                </Popover>
-                              </div>
-                              <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                                  <Clock className="h-3 w-3" /> Timeslot
-                                </Label>
-                                <Select
-                                  value={data.timeslotId}
-                                  onValueChange={(v) =>
-                                    updateCategoryData(category.id, {
-                                      timeslotId: v,
-                                    })}
-                                >
-                                  <SelectTrigger className="h-10 text-xs rounded-xl">
-                                    <SelectValue placeholder="Select Slot" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {timeslots
-                                      ?.filter((ts: any) =>
-                                        ts.ticket_category_id === category.id
-                                      )
-                                      .map((ts: any) => (
-                                        <SelectItem
-                                          key={ts.id}
-                                          value={ts.id.toString()}
-                                        >
-                                          {ts.name} ({ts.start})
-                                        </SelectItem>
-                                      ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
+                const selectedDate = data.bookingDate
+                  ? parseISO(data.bookingDate)
+                  : undefined;
+
+                return (
+                  <Card
+                    key={category.id}
+                    className="overflow-hidden border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all duration-200"
+                  >
+                    <div className="flex flex-col lg:flex-row">
+                      {/* Form Details Pane */}
+                      <div className="flex-1 p-5 sm:p-6 space-y-6">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div>
+                            <h4 className="text-lg font-bold text-slate-900">
+                              {category.name}
+                            </h4>
+                            <p className="text-sm text-slate-500 mt-1 max-w-xl">
+                              {category.special_instruction ||
+                                "Standard admissions terms and conditions apply."}
+                            </p>
                           </div>
 
-                          {/* Right Section: Quantity Controls */}
-                          <div className="lg:w-[240px] border-t lg:border-l lg:border-t-0 bg-slate-50 p-6 flex flex-col justify-center gap-4">
-                            <div className="flex items-center justify-between rounded-xl border bg-white p-3">
-                              <span className="text-xs font-bold text-slate-600">
-                                Adult
-                              </span>
-                              <div className="flex items-center gap-3">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-7 w-7 rounded-full"
-                                  disabled={data.adult === 0}
-                                  onClick={() =>
-                                    updateCategoryData(category.id, {
-                                      adult: Math.max(0, data.adult - 1),
-                                    })}
-                                >
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <span className="w-4 text-center font-bold text-sm">
-                                  {data.adult}
-                                </span>
-                                <Button
-                                  size="icon"
-                                  className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700"
-                                  onClick={() =>
-                                    updateCategoryData(category.id, {
-                                      adult: data.adult + 1,
-                                    })}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between rounded-xl border bg-white p-3">
-                              <span className="text-xs font-bold text-slate-600">
-                                Child
-                              </span>
-                              <div className="flex items-center gap-3">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-7 w-7 rounded-full"
-                                  disabled={data.child === 0}
-                                  onClick={() =>
-                                    updateCategoryData(category.id, {
-                                      child: Math.max(0, data.child - 1),
-                                    })}
-                                >
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <span className="w-4 text-center font-bold text-sm">
-                                  {data.child}
-                                </span>
-                                <Button
-                                  size="icon"
-                                  className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700"
-                                  onClick={() =>
-                                    updateCategoryData(category.id, {
-                                      child: data.child + 1,
-                                    })}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-50 font-medium px-2.5 py-1 rounded-md">
+                              Active Slots
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleOpenModal(
+                                  category.serviceId,
+                                  category.id,
+                                )}
+                              className="text-slate-600 hover:text-indigo-600 hover:bg-slate-100 gap-1.5 h-8 font-medium"
+                            >
+                              <ImageIcon className="h-4 w-4" /> Gallery
+                            </Button>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
 
-            {/* Summary */}
-            <div className="space-y-6">
-              <Card className="shadow-xl border-indigo-100 sticky top-24">
-                <CardHeader className="bg-slate-900 text-white rounded-t-xl">
-                  <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5" /> Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-4">
-                  {count === 0
-                    ? (
-                      <p className="text-center py-8 text-slate-400 italic">
-                        No tickets selected
-                      </p>
-                    )
-                    : (
-                      <div className="space-y-4">
-                        {Object.entries(bookingState.counts).map(
-                          ([catId, data]) => {
-                            if (data.adult === 0 && data.child === 0) {
-                              return null;
-                            }
-                            const cat = categories.find((c: any) =>
-                              c.id.toString() === catId
-                            );
-                            const ts = timeslots?.find((t: any) =>
-                              t.id.toString() === data.timeslotId
-                            );
-                            return (
-                              <div
-                                key={catId}
-                                className="p-3 rounded-lg bg-slate-50 border border-slate-100 space-y-2"
+                        {/* Pricing Displays */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                              Adult Fare
+                            </span>
+                            <span className="text-xl font-black text-slate-800">
+                              ₹{parseFloat(category.adult_price).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                              Child Fare
+                            </span>
+                            <span className="text-xl font-black text-slate-800">
+                              ₹{(parseFloat(category.child_price) || 0).toFixed(
+                                2,
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Schedule Selectors */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                              <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
+                              {" "}
+                              Visit Date
+                            </Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal h-10 border-slate-200 rounded-xl text-sm",
+                                    !data.bookingDate && "text-slate-400",
+                                  )}
+                                >
+                                  {data.bookingDate
+                                    ? format(selectedDate!, "PPP")
+                                    : <span>Choose Date</span>}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-auto p-0"
+                                align="start"
                               >
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-bold">{cat.name}</span>
-                                  <span className="font-medium">
-                                    ₹{(data.adult *
-                                        parseFloat(cat.adult_price) +
-                                      data.child *
-                                        (parseFloat(cat.child_price) || 0))
-                                      .toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium">
-                                  <span className="flex items-center gap-1">
-                                    <CalendarIcon className="h-2.5 w-2.5" />
-                                    {" "}
-                                    {data.bookingDate}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="h-2.5 w-2.5" />{" "}
-                                    {ts?.name || "No Slot"}
-                                  </span>
-                                </div>
-                                <p className="text-[10px] text-slate-400">
-                                  {data.adult} Adults, {data.child} Children
-                                </p>
-                              </div>
-                            );
-                          },
-                        )}
-                        <Separator />
-                        <div className="flex justify-between items-center pt-2">
-                          <span className="text-slate-600">Total Tickets</span>
-                          <span className="font-bold">{count}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-slate-600">Total Amount</span>
-                          <span className="text-2xl font-black text-indigo-600">
-                            ₹{total.toFixed(2)}
-                          </span>
+                                <Calendar
+                                  mode="single"
+                                  selected={selectedDate}
+                                  onSelect={(date) =>
+                                    updateCategoryData(category.id, {
+                                      bookingDate: date
+                                        ? format(date, "yyyy-MM-dd")
+                                        : "",
+                                    })}
+                                  disabled={isDateDisabled}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-slate-400" />
+                              {" "}
+                              Allocation Window
+                            </Label>
+                            <Select
+                              value={data.timeslotId}
+                              onValueChange={(v) =>
+                                updateCategoryData(category.id, {
+                                  timeslotId: v,
+                                })}
+                            >
+                              <SelectTrigger className="h-10 border-slate-200 rounded-xl text-sm">
+                                <SelectValue placeholder="Choose Window" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeslots
+                                  ?.filter((ts: any) =>
+                                    ts.ticket_category_id === category.id
+                                  )
+                                  .map((ts: any) => (
+                                    <SelectItem
+                                      key={ts.id}
+                                      value={ts.id.toString()}
+                                    >
+                                      {ts.name} ({ts.start})
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
-                    )}
-                </CardContent>
-                <CardFooter className="pb-6">
-                  <Button
-                    onClick={handleBuyTickets}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-lg font-bold rounded-xl shadow-lg"
-                    disabled={count === 0 || bookingMutation.isPending}
-                  >
-                    {bookingMutation.isPending
-                      ? <Loader2 className="animate-spin" />
-                      : (
-                        <>
-                          Confirm & Print{" "}
-                          <ChevronRight className="ml-2 h-5 w-5" />
-                        </>
-                      )}
-                  </Button>
-                </CardFooter>
-              </Card>
+
+                      {/* Quantum Counter Sidebars */}
+                      <div className="lg:w-[220px] bg-slate-50/70 border-t lg:border-t-0 lg:border-l border-slate-200 p-5 flex flex-row lg:flex-col justify-center items-center gap-4">
+                        {/* Adult Counter */}
+                        <div className="flex-1 w-full flex items-center justify-between lg:justify-center lg:flex-col bg-white border border-slate-200 lg:border-slate-100 p-3 lg:p-4 rounded-xl shadow-sm gap-2">
+                          <span className="text-xs font-bold text-slate-500 lg:mb-1">
+                            Adults
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg border-slate-200"
+                              disabled={data.adult === 0}
+                              onClick={() =>
+                                updateCategoryData(category.id, {
+                                  adult: Math.max(0, data.adult - 1),
+                                })}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-5 text-center font-bold text-slate-800 text-base">
+                              {data.adult}
+                            </span>
+                            <Button
+                              size="icon"
+                              className="h-7 w-7 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
+                              onClick={() =>
+                                updateCategoryData(category.id, {
+                                  adult: data.adult + 1,
+                                })}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Child Counter */}
+                        <div className="flex-1 w-full flex items-center justify-between lg:justify-center lg:flex-col bg-white border border-slate-200 lg:border-slate-100 p-3 lg:p-4 rounded-xl shadow-sm gap-2">
+                          <span className="text-xs font-bold text-slate-500 lg:mb-1">
+                            Children
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg border-slate-200"
+                              disabled={data.child === 0}
+                              onClick={() =>
+                                updateCategoryData(category.id, {
+                                  child: Math.max(0, data.child - 1),
+                                })}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-5 text-center font-bold text-slate-800 text-base">
+                              {data.child}
+                            </span>
+                            <Button
+                              size="icon"
+                              className="h-7 w-7 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
+                              onClick={() =>
+                                updateCategoryData(category.id, {
+                                  child: data.child + 1,
+                                })}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
+          </div>
+
+          {/* Sticky Billing Statement Panel */}
+          <div className="space-y-6 lg:sticky lg:top-6">
+            <Card className="shadow-md border-slate-200 bg-white overflow-hidden">
+              <CardHeader className="bg-slate-900 text-white py-4">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-indigo-400" />{" "}
+                  Booking Overview
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent className="pt-5 space-y-4">
+                {count === 0
+                  ? (
+                    <div className="text-center py-10 px-4">
+                      <div className="h-10 w-10 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Ticket className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm font-medium text-slate-400 italic">
+                        No slots or packages selected yet
+                      </p>
+                    </div>
+                  )
+                  : (
+                    <div className="space-y-3.5">
+                      {Object.entries(bookingState.counts).map(
+                        ([catId, data]) => {
+                          if (data.adult === 0 && data.child === 0) return null;
+                          const cat = categories.find((c: any) =>
+                            c.id.toString() === catId
+                          );
+                          const ts = timeslots?.find((t: any) =>
+                            t.id.toString() === data.timeslotId
+                          );
+
+                          const lineTotal =
+                            data.adult * parseFloat(cat.adult_price) +
+                            data.child * (parseFloat(cat.child_price) || 0);
+
+                          return (
+                            <div
+                              key={catId}
+                              className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5"
+                            >
+                              <div className="flex justify-between items-start gap-2 text-sm">
+                                <span className="font-bold text-slate-800 line-clamp-1">
+                                  {cat.name}
+                                </span>
+                                <span className="font-bold text-slate-900 shrink-0">
+                                  ₹{lineTotal.toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-[11px] font-medium text-slate-500">
+                                <span className="flex items-center gap-1">
+                                  <CalendarDays className="h-3 w-3 text-slate-400" />
+                                  {" "}
+                                  {data.bookingDate || "Date Pending"}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3 text-slate-400" />
+                                  {" "}
+                                  {ts?.name || "Window Pending"}
+                                </span>
+                              </div>
+                              <div className="text-[11px] font-bold text-indigo-600/90 tracking-wide">
+                                {data.adult > 0 &&
+                                  `${data.adult} Adult${
+                                    data.adult > 1 ? "s" : ""
+                                  }`}
+                                {data.adult > 0 && data.child > 0 && " • "}
+                                {data.child > 0 &&
+                                  `${data.child} Child${
+                                    data.child > 1 ? "ren" : ""
+                                  }`}
+                              </div>
+                            </div>
+                          );
+                        },
+                      )}
+
+                      <Separator className="my-2" />
+
+                      <div className="flex justify-between items-center text-sm font-medium text-slate-500 px-1">
+                        <span>Total Volume</span>
+                        <span className="font-bold text-slate-800">
+                          {count} Ticket{count > 1 ? "s" : ""}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center px-1 pt-1">
+                        <span className="text-sm font-bold text-slate-800">
+                          Gross Total
+                        </span>
+                        <span className="text-2xl font-black text-indigo-600 tracking-tight">
+                          ₹{total.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+              </CardContent>
+
+              <CardFooter className="p-4 bg-slate-50/50 border-t border-slate-100">
+                <Button
+                  onClick={handleBuyTickets}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12 text-sm rounded-xl shadow-sm transition-all"
+                  disabled={count === 0 || bookingMutation.isPending}
+                >
+                  {bookingMutation.isPending
+                    ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="animate-spin h-4 w-4" />{" "}
+                        Processing Order...
+                      </div>
+                    )
+                    : (
+                      "Generate & Print Tickets"
+                    )}
+                </Button>
+              </CardFooter>
+            </Card>
           </div>
         </div>
       </main>
+
       <Footer />
+
+      {/* Media Modals */}
+      {currentCategory && (
+        <ModalPictureShow
+          serviceId={currentCategory.serviceId}
+          categoryId={currentCategory.categoryId}
+          onClose={() => setCurrentCategory(null)}
+        />
+      )}
     </div>
   );
 };
