@@ -446,7 +446,7 @@ const MerchantTicketBooking = () => {
                               size="sm"
                               onClick={() =>
                                 handleOpenModal(
-                                  category.serviceId,
+                                  parseInt(serviceId!),
                                   category.id,
                                 )}
                               className="text-slate-600 hover:text-indigo-600 hover:bg-slate-100 gap-1.5 h-8 font-medium"
@@ -471,60 +471,31 @@ const MerchantTicketBooking = () => {
                               Child Fare
                             </span>
                             <span className="text-xl font-black text-slate-800">
-                              ₹{(parseFloat(category.child_price) || 0).toFixed(
-                                2,
-                              )}
+                              ₹{category.child_price || "0.00"}
                             </span>
                           </div>
                         </div>
 
-                        {/* Schedule Selectors */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                              <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
-                              {" "}
+                        {/* Per-Category Schedule */}
+                        <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-100">
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                              <CalendarIcon className="h-3 w-3" />{" "}
                               Visit Date
                             </Label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full justify-start text-left font-normal h-10 border-slate-200 rounded-xl text-sm",
-                                    !data.bookingDate && "text-slate-400",
-                                  )}
-                                >
-                                  {data.bookingDate
-                                    ? format(selectedDate!, "PPP")
-                                    : <span>Choose Date</span>}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                className="w-auto p-0"
-                                align="start"
-                              >
-                                <Calendar
-                                  mode="single"
-                                  selected={selectedDate}
-                                  onSelect={(date) =>
-                                    updateCategoryData(category.id, {
-                                      bookingDate: date
-                                        ? format(date, "yyyy-MM-dd")
-                                        : "",
-                                    })}
-                                  disabled={isDateDisabled}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
+                            <Input
+                              type="date"
+                              value={data.bookingDate}
+                              onChange={(e) =>
+                                updateCategoryData(category.id, {
+                                  bookingDate: e.target.value,
+                                })}
+                              className="h-10 text-xs"
+                            />
                           </div>
-
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                              <Clock className="h-3.5 w-3.5 text-slate-400" />
-                              {" "}
-                              Allocation Window
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                              <Clock className="h-3 w-3" /> Timeslot
                             </Label>
                             <Select
                               value={data.timeslotId}
@@ -533,8 +504,8 @@ const MerchantTicketBooking = () => {
                                   timeslotId: v,
                                 })}
                             >
-                              <SelectTrigger className="h-10 border-slate-200 rounded-xl text-sm">
-                                <SelectValue placeholder="Choose Window" />
+                              <SelectTrigger className="h-10 text-xs">
+                                <SelectValue placeholder="Select Slot" />
                               </SelectTrigger>
                               <SelectContent>
                                 {timeslots
@@ -555,18 +526,17 @@ const MerchantTicketBooking = () => {
                         </div>
                       </div>
 
-                      {/* Quantum Counter Sidebars */}
-                      <div className="lg:w-[220px] bg-slate-50/70 border-t lg:border-t-0 lg:border-l border-slate-200 p-5 flex flex-row lg:flex-col justify-center items-center gap-4">
-                        {/* Adult Counter */}
-                        <div className="flex-1 w-full flex items-center justify-between lg:justify-center lg:flex-col bg-white border border-slate-200 lg:border-slate-100 p-3 lg:p-4 rounded-xl shadow-sm gap-2">
-                          <span className="text-xs font-bold text-slate-500 lg:mb-1">
-                            Adults
+                      {/* Right Section: Quantity Controls */}
+                      <div className="lg:w-[240px] border-t lg:border-l lg:border-t-0 bg-slate-50 p-6 flex flex-col justify-center gap-4">
+                        <div className="flex items-center justify-between rounded-xl border bg-white p-3">
+                          <span className="text-xs font-bold text-slate-600">
+                            Adult
                           </span>
                           <div className="flex items-center gap-3">
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-7 w-7 rounded-lg border-slate-200"
+                              className="h-7 w-7 rounded-full"
                               disabled={data.adult === 0}
                               onClick={() =>
                                 updateCategoryData(category.id, {
@@ -575,12 +545,12 @@ const MerchantTicketBooking = () => {
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
-                            <span className="w-5 text-center font-bold text-slate-800 text-base">
+                            <span className="w-4 text-center font-bold text-sm">
                               {data.adult}
                             </span>
                             <Button
                               size="icon"
-                              className="h-7 w-7 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
+                              className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700"
                               onClick={() =>
                                 updateCategoryData(category.id, {
                                   adult: data.adult + 1,
@@ -591,16 +561,15 @@ const MerchantTicketBooking = () => {
                           </div>
                         </div>
 
-                        {/* Child Counter */}
-                        <div className="flex-1 w-full flex items-center justify-between lg:justify-center lg:flex-col bg-white border border-slate-200 lg:border-slate-100 p-3 lg:p-4 rounded-xl shadow-sm gap-2">
-                          <span className="text-xs font-bold text-slate-500 lg:mb-1">
-                            Children
+                        <div className="flex items-center justify-between rounded-xl border bg-white p-3">
+                          <span className="text-xs font-bold text-slate-600">
+                            Child
                           </span>
                           <div className="flex items-center gap-3">
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-7 w-7 rounded-lg border-slate-200"
+                              className="h-7 w-7 rounded-full"
                               disabled={data.child === 0}
                               onClick={() =>
                                 updateCategoryData(category.id, {
@@ -609,12 +578,12 @@ const MerchantTicketBooking = () => {
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
-                            <span className="w-5 text-center font-bold text-slate-800 text-base">
+                            <span className="w-4 text-center font-bold text-sm">
                               {data.child}
                             </span>
                             <Button
                               size="icon"
-                              className="h-7 w-7 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
+                              className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white"
                               onClick={() =>
                                 updateCategoryData(category.id, {
                                   child: data.child + 1,
@@ -735,7 +704,7 @@ const MerchantTicketBooking = () => {
               <CardFooter className="p-4 bg-slate-50/50 border-t border-slate-100">
                 <Button
                   onClick={handleBuyTickets}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12 text-sm rounded-xl shadow-sm transition-all"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-sm font-bold rounded-xl shadow-sm transition-all"
                   disabled={count === 0 || bookingMutation.isPending}
                 >
                   {bookingMutation.isPending
