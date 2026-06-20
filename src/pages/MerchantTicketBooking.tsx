@@ -8,6 +8,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SiteMapDialog from "@/components/SiteMapDialog";
 import { API_URL } from "@/config";
+
 import {
   Card,
   CardContent,
@@ -94,6 +95,7 @@ const MerchantTicketBooking = () => {
     enabled: !!serviceId,
   });
 
+  
   // Fetch valid booking dates from the new backend endpoint
   const { data: calendarData, isLoading: isLoadingCalendar } = useQuery({
     queryKey: ["service-calendar", serviceId],
