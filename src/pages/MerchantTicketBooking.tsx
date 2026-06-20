@@ -38,7 +38,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { showError, showSuccess } from "@/utils/toast";
 import {
   ArrowLeft,
-  CalendarDays,
+  CalendarDays as CalendarIcon,
   Clock,
   Image as ImageIcon,
   Loader2,
@@ -321,9 +321,9 @@ const MerchantTicketBooking = () => {
         {/* Dashboard Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Main Booking Controls */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 lg:col-span-2 gap-8">
             {/* Customer Information Card */}
-            <Card className="shadow-sm border-slate-200 bg-white overflow-hidden">
+            <Card className="lg:col-span-2 shadow-sm border-slate-200 bg-white overflow-hidden">
               <CardHeader className="bg-slate-50/70 border-b border-slate-100 py-4">
                 <CardTitle className="text-base font-semibold flex items-center gap-2 text-slate-800">
                   <User className="h-4 w-4 text-indigo-600" /> Customer Details
@@ -400,7 +400,7 @@ const MerchantTicketBooking = () => {
             </Card>
 
             {/* Ticket Activities Registry */}
-            <div className="space-y-4">
+            <div className="lg:col-span-2 space-y-4">
               <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 px-1">
                 <Ticket className="h-5 w-5 text-indigo-600" />{" "}
                 Select Activities & Passes
@@ -550,7 +550,7 @@ const MerchantTicketBooking = () => {
                             </span>
                             <Button
                               size="icon"
-                              className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700"
+                              className="h-7 w-7 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white"
                               onClick={() =>
                                 updateCategoryData(category.id, {
                                   adult: data.adult + 1,
@@ -654,7 +654,7 @@ const MerchantTicketBooking = () => {
                               </div>
                               <div className="flex items-center gap-3 text-[11px] font-medium text-slate-500">
                                 <span className="flex items-center gap-1">
-                                  <CalendarDays className="h-3 w-3 text-slate-400" />
+                                  <CalendarIcon className="h-3 w-3 text-slate-400" />
                                   {" "}
                                   {data.bookingDate || "Date Pending"}
                                 </span>
