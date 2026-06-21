@@ -28,6 +28,7 @@ import {
   CalendarX,
   Image as ImageIcon,
   IndianRupee,
+  Tag,
 } from "lucide-react";
 
 const API_URL = "http://localhost:5000/api";
@@ -40,7 +41,7 @@ const MerchantDashboard = () => {
     "Authorization": `Bearer ${localStorage.getItem("token")}`,
   });
 
-  const { data: services, isLoading } = useQuery({
+  const { data: services, isLoading: isLoadingServices } = useQuery({
     queryKey: ["merchant-services", merchantId],
     queryFn: async () => {
       if (!merchantId) return [];
@@ -139,7 +140,7 @@ const MerchantDashboard = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                {isLoading
+                {isLoadingServices
                   ? (
                     <div className="flex justify-center items-center py-16">
                       <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
@@ -251,6 +252,17 @@ const MerchantDashboard = () => {
                                 >
                                   <CalendarX className="h-4 w-4" />
                                   Holidays
+                                </Button>
+                              </Link>
+
+                              <Link to={`/merchant/vouchers/${service.id}`}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 gap-1"
+                                >
+                                  <Tag className="h-4 w-4" />
+                                  Vouchers
                                 </Button>
                               </Link>
                             </div>
