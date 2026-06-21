@@ -27,6 +27,7 @@ import {
   Users,
   CalendarX,
   Image as ImageIcon,
+  IndianRupee,
 } from "lucide-react";
 
 const API_URL = "http://localhost:5000/api";
@@ -65,8 +66,8 @@ const MerchantDashboard = () => {
     { title: "Tickets Sold", value: "0", icon: Ticket, color: "text-blue-600" },
     {
       title: "Total Revenue",
-      value: "$0.00",
-      icon: DollarSign,
+      value: "₹0.00",
+      icon: IndianRupee,
       color: "text-green-600",
     },
     { title: "Attendees", value: "0", icon: Users, color: "text-purple-600" },
@@ -306,7 +307,7 @@ const MerchantDashboard = () => {
                     <span className="text-sm text-slate-500">
                       Pending Amount
                     </span>
-                    <span className="font-bold text-indigo-600">$0.00</span>
+                    <span className="font-bold text-indigo-600">₹0.00</span>
                   </div>
                 </CardContent>
               </Card>
