@@ -52,6 +52,7 @@ import {
   Percent,
   Tag,
   Check,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -240,7 +241,7 @@ const MerchantTicketBooking = () => {
     setIsValidatingVoucher(true);
     try {
       const res = await fetch(
-        `${API_URL}/merchant-service-vouchers?merchantId=${service.merchant_id}&serviceId=${serviceId}&voucherCode=${encodeURIComponent(
+        `${API_URL}/validate-merchant-service-voucher?merchantId=${service.merchant_id}&serviceId=${serviceId}&voucherCode=${encodeURIComponent(
           voucherCode.trim().toUpperCase()
         )}`,
         { headers: getAuthHeader() }
@@ -274,14 +275,14 @@ const MerchantTicketBooking = () => {
     },
     onSuccess: (data) => {
       showSuccess("Booking confirmed successfully!");
-      navigate(`/merchant/print/${data.data[0].ticket.id}`);
+      navigate(`/merchant/print/${data.invoiceId}`);
     },
     onError: (err: any) => showError(err.message),
   });
 
   const handleBuyTickets = () => {
-    const { count } = calculateTotal();
-    if (count === 0) return showError("Please select at least one ticket");
+    const totals = calculateTotal();
+    if (totals.count === 0) return showError("Please select at least one ticket");
     if (!customerInfo.name || !customerInfo.phone) {
       return showError("Please fill out all required customer details");
     }
@@ -320,6 +321,15 @@ const MerchantTicketBooking = () => {
         merchant_service_id: parseInt(serviceId!),
         categories: selectedCategories,
         update_by: 1,
+        // Added Fields
+        voucher_code: appliedVoucher,
+        total_amount: totals.subtotal,
+        discount_percentage: discountPercentage,
+        discount_value: totals.discountAmount,
+        sgst: totals.sgstAmount,
+        cgst: totals.cgstAmount,
+        igst: totals.igstAmount,
+        grand_total: totals.total
       });
     } catch (err: any) {
       showError(err.message);

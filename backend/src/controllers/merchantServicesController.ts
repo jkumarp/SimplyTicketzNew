@@ -180,7 +180,7 @@ export const getMerchantServicesTaxes = async (req: Request, res: Response): Pro
 
     if(serviceState == 1) //Home State
     {
-      taxesApplicable.push({cgst:serviceCgst,sgst:serviceCgst,igst:0});
+      taxesApplicable.push({cgst:serviceCgst,sgst:serviceSgst,igst:0});
     }else{
       taxesApplicable.push({cgst:0,sgst:0,igst:serviceIgst});
     }

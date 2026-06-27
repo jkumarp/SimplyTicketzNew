@@ -35,28 +35,48 @@ export const getTickets = async (
   }
 };
 
+export const getTicketsByInvoiceId = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { invoiceId } = req.query;
+    let query = supabase
+      .schema("transaction")
+      .from("ticket")
+      .select("*");
+
+    if (invoiceId) {
+      query = query.eq("invoice_id", invoiceId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 export const createTicket = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   try {
     const {
-      customer_phone,
-      customer_phone_code,
       merchant_id,
       merchant_service_id,
       ticket_category_id,
       ticket_timeslot_id,
       booking_date,
-      email,
-      dob,
-      gstin,
-      address,
-      customer_name,
-      payment_mode,
-      transaction_date,
-      transaction_reference,
-      bank_reference,
       update_by,
       status,
     } = req.body;
@@ -65,22 +85,11 @@ export const createTicket = async (
       .schema("transaction")
       .from("ticket")
       .insert([{
-        customer_phone,
-        customer_phone_code,
         merchant_id,
         merchant_service_id,
         ticket_category_id,
         ticket_timeslot_id,
         booking_date: booking_date || new Date().toISOString(),
-        email,
-        dob,
-        gstin,
-        address,
-        customer_name,
-        payment_mode,
-        transaction_date,
-        transaction_reference,
-        bank_reference,
         update_by,
         update_date: new Date().toISOString(),
         status: status || "PENDING",
@@ -198,13 +207,19 @@ export const bookTicket = async (
     const convinienceFee = subscriptionData?.convinience_fee ?? 0;
 
     //Insert Invoice data
-    const { data: dataInv, error: invoiceError } = await supabase
+    const { data: invoiceData, error: invoiceError } = await supabase
       .schema("transaction")
       .from("invoice")
       .insert([{
         invoice_number: `INV-${merchant_id}-${merchant_service_id}-${dtValue}`,
         merchant_id,
         merchant_service_id,
+        customer_phone,
+        customer_phone_code,
+        email,
+        customer_name,
+        payment_mode,
+        transaction_date:new Date().toISOString(),
         total_amount: 0,
         convinience_fee: convinienceFee,
         sgst: serviceData?.sgst ?? null,
@@ -222,9 +237,9 @@ export const bookTicket = async (
       res.status(400).json({ error: invoiceError.message });
       return;
     }
+    const invoiceId = invoiceData[0].id;
     const isSingleQr = serviceData?.single_qr_sw ?? true;
-    const createdTickets = [];
-
+    
     // Process each category as a separate ticket header
     for (const cat of categories) {
       //Get Category Data
@@ -251,16 +266,12 @@ export const bookTicket = async (
         .schema("transaction")
         .from("ticket")
         .insert([{
-          customer_phone,
-          customer_phone_code,
           merchant_id,
           merchant_service_id,
           ticket_category_id: cat.ticket_category_id,
           ticket_timeslot_id: cat.ticket_timeslot_id,
+          invoice_id:invoiceId,
           booking_date: cat.booking_date || new Date().toISOString(),
-          email,
-          customer_name,
-          payment_mode,
           update_by,
           update_date: new Date().toISOString(),
           status: "CONFIRMED",
@@ -351,16 +362,13 @@ export const bookTicket = async (
           .from("ticket_detail")
           .insert(detailsToInsert)
           .select();
-
-        if (detailsError) throw detailsError;
-        createdTickets.push({ ticket: ticketData[0], details: detailsData });
-
+       
         //Insert Invoice Details
         const { data: dataInvDtl, error: errorInvoiceDtl } = await supabase
           .schema("transaction")
           .from("invoice_detail")
           .insert([{
-            invoice_id: dataInv[0]?.id,
+            invoice_id: invoiceId,
             ticket_id: ticketId,
             ticket_category_id: cat.ticket_category_id,
             adult_price: categoryData?.adult_price ?? 0,
@@ -384,7 +392,7 @@ export const bookTicket = async (
     res.status(201).json({
       success: true,
       message: "Tickets booked successfully",
-      data: createdTickets,
+      invoiceId: invoiceId,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Internal Server Error" });
