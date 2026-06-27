@@ -37,7 +37,7 @@ export const createInvoiceDetail = async (req: Request, res: Response): Promise<
     const {
       invoice_id,
       ticket_id,
-      ticket_detail_id,
+      ticket_category_id,
       adult_price,
       child_price,
       adult_count,
@@ -52,7 +52,7 @@ export const createInvoiceDetail = async (req: Request, res: Response): Promise<
       .insert([{
         invoice_id,
         ticket_id,
-        ticket_detail_id,
+        ticket_category_id,
         adult_price,
         child_price,
         adult_count,

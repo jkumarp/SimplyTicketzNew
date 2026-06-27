@@ -156,6 +156,48 @@ export const getMerchantServices = async (req: Request, res: Response): Promise<
   }
 };
 
+export const getMerchantServicesTaxes = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { merchantId } = req.query;
+    const { serviceId } = req.query;
+    let query = supabase.schema('master').from('merchant_service').select('sgst,cgst,igst,state');
+    
+    if (merchantId) {
+      query = query.eq('merchant_id', merchantId);
+    }
+    if (merchantId) {
+      query = query.eq('id', serviceId);
+    }
+
+    const { data:serviceData, error:serviceError } = await query.single();
+
+    const serviceState = serviceData?.state ?? 0;
+    const serviceCgst= serviceData?.cgst ?? 0;
+    const serviceSgst = serviceData?.sgst ?? 0;
+    const serviceIgst = serviceData?.igst ?? 0;
+
+    let taxesApplicable: any[] = [];
+
+    if(serviceState == 1) //Home State
+    {
+      taxesApplicable.push({cgst:serviceCgst,sgst:serviceCgst,igst:0});
+    }else{
+      taxesApplicable.push({cgst:0,sgst:0,igst:serviceIgst});
+    }
+    
+    if (serviceError) {
+      res.status(400).json({ error: serviceError.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data:taxesApplicable,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
 /**
  * getMerchantServiceBookingCal: Returns a list of valid booking dates for a service.
  * Considers working days, holidays, advance booking window, and service validity dates.

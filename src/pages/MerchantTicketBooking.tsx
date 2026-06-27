@@ -49,6 +49,7 @@ import {
   Ticket,
   User,
   ShieldAlert,
+  Percent,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -167,18 +168,58 @@ const MerchantTicketBooking = () => {
   };
 
   const calculateTotal = () => {
-    let total = 0;
+    let subtotal = 0;
     let count = 0;
-    if (!categories) return { total, count };
+    if (!categories) {
+      return {
+        subtotal: 0,
+        total: 0,
+        count: 0,
+        gstAmount: 0,
+        sgstAmount: 0,
+        cgstAmount: 0,
+        igstAmount: 0,
+        sgstPct: 0,
+        cgstPct: 0,
+        igstPct: 0,
+      };
+    }
+
     Object.entries(bookingState.counts).forEach(([catId, data]) => {
       const category = categories.find((c: any) => c.id.toString() === catId);
       if (category) {
-        total += data.adult * parseFloat(category.adult_price);
-        total += data.child * (parseFloat(category.child_price) || 0);
+        subtotal += data.adult * parseFloat(category.adult_price);
+        subtotal += data.child * (parseFloat(category.child_price) || 0);
         count += data.adult + data.child;
       }
     });
-    return { total, count };
+
+    const sgstPct = service?.sgst ? parseFloat(service.sgst) : 0;
+    const cgstPct = service?.cgst ? parseFloat(service.cgst) : 0;
+    const igstPct = service?.igst ? parseFloat(service.igst) : 0;
+
+    // Check if the service state is home state (state ID 1 in this context) to determine sgst/cgst vs igst
+    const isHomeState = service?.state === 1 || service?.state === "1";
+
+    const sgstAmount = isHomeState ? (subtotal * sgstPct) / 100 : 0;
+    const cgstAmount = isHomeState ? (subtotal * cgstPct) / 100 : 0;
+    const igstAmount = !isHomeState ? (subtotal * igstPct) / 100 : 0;
+    const gstAmount = sgstAmount + cgstAmount + igstAmount;
+
+    const total = subtotal + gstAmount;
+
+    return {
+      subtotal,
+      total,
+      count,
+      gstAmount,
+      sgstAmount,
+      cgstAmount,
+      igstAmount,
+      sgstPct,
+      cgstPct,
+      igstPct,
+    };
   };
 
   // Mutations
@@ -273,7 +314,18 @@ const MerchantTicketBooking = () => {
     );
   }
 
-  const { total, count } = calculateTotal();
+  const {
+    subtotal,
+    total,
+    count,
+    gstAmount,
+    sgstAmount,
+    cgstAmount,
+    igstAmount,
+    sgstPct,
+    cgstPct,
+    igstPct,
+  } = calculateTotal();
 
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col font-sans antialiased">
@@ -731,12 +783,51 @@ const MerchantTicketBooking = () => {
 
                       <Separator className="my-2" />
 
+                      {/* Ticket Volume & Subtotal */}
                       <div className="flex justify-between items-center text-sm font-medium text-slate-500 px-1">
                         <span>Total Volume</span>
                         <span className="font-bold text-slate-800">
                           {count} Ticket{count > 1 ? "s" : ""}
                         </span>
                       </div>
+
+                      <div className="flex justify-between items-center text-sm font-medium text-slate-500 px-1">
+                        <span>Subtotal</span>
+                        <span className="font-bold text-slate-800">
+                          ₹{subtotal.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {/* SGST & CGST or IGST Breakdown */}
+                      {gstAmount > 0 && (
+                        <div className="bg-indigo-50/50 rounded-xl p-3 border border-indigo-50 space-y-2 text-xs text-indigo-700 animate-in fade-in duration-200">
+                          <p className="font-bold flex items-center gap-1">
+                            <Percent className="h-3 w-3" /> GST Taxes breakdown:
+                          </p>
+                          {sgstAmount > 0 && (
+                            <div className="flex justify-between">
+                              <span>SGST ({sgstPct}%)</span>
+                              <span className="font-bold">₹{sgstAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {cgstAmount > 0 && (
+                            <div className="flex justify-between">
+                              <span>CGST ({cgstPct}%)</span>
+                              <span className="font-bold">₹{cgstAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {igstAmount > 0 && (
+                            <div className="flex justify-between">
+                              <span>IGST ({igstPct}%)</span>
+                              <span className="font-bold">₹{igstAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between pt-1 border-t border-indigo-100 font-bold">
+                            <span>Total GST</span>
+                            <span>₹{gstAmount.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex justify-between items-center px-1 pt-1">
                         <span className="text-sm font-bold text-slate-800">
