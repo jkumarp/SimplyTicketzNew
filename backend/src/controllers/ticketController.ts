@@ -160,6 +160,10 @@ export const bookTicket = async (
     payment_mode,
     categories, // Array of { ticket_category_id, adult_count, child_count, booking_date, ticket_timeslot_id }
     update_by,
+    voucher_code,
+    grand_total,
+    discount_value,
+    total_amount,
   } = req.body;
 
   try {
@@ -186,7 +190,7 @@ export const bookTicket = async (
       .from("merchant_subscription")
       .select("convinience_fee")
       .eq("merchant_service_id", merchant_service_id)
-      .eq("merchant_id",merchant_id)
+      .eq("merchant_id", merchant_id)
       .eq("status_sw", true)
       .gte("end_date", dtValue)
       .lte("start_date", dtValue)
@@ -205,7 +209,40 @@ export const bookTicket = async (
       return;
     }
     const convinienceFee = subscriptionData?.convinience_fee ?? 0;
+    let discountPercentage = 0;
+    let voucherId = null;
+    //Validate Voucher code
+    if (voucher_code) {
+      let query = supabase.schema("master").from("merchant_service_voucher")
+        .select("id,percentage");
 
+      if (merchant_id) {
+        query = query.eq("merchant_id", merchant_id);
+      }
+      if (merchant_service_id) {
+        query = query.eq("service_id", merchant_service_id);
+      }
+      if (voucher_code) {
+        query = query.eq("voucher_code", voucher_code);
+      }
+      query = query.gte("end_date", dtValue);
+      query = query.lte("start_date", dtValue);
+
+      const { data: voucherData, error: voucherError } = await query
+        .maybeSingle();
+
+      if (voucherError) {
+        res.status(400).json({ error: voucherError.message });
+        return;
+      }
+
+      if (!voucherData) {
+        res.status(400).json({ error: "Voucher code not valid" });
+        return;
+      }
+      discountPercentage = voucherData?.percentage ?? 0;
+      voucherId = voucherData?.id ?? null
+    }
     //Insert Invoice data
     const { data: invoiceData, error: invoiceError } = await supabase
       .schema("transaction")
@@ -219,17 +256,18 @@ export const bookTicket = async (
         email,
         customer_name,
         payment_mode,
-        transaction_date:new Date().toISOString(),
-        total_amount: 0,
+        transaction_date: new Date().toISOString(),
+        total_amount: total_amount ?? 0,
         convinience_fee: convinienceFee,
         sgst: serviceData?.sgst ?? null,
         cgst: serviceData?.cgst ?? null,
         igst: serviceData?.igst ?? null,
-        discount_value: 0,
-        grand_total: 0,
+        discount_value: discount_value ?? 0,
+        grand_total: grand_total ?? 0,
         update_by,
         update_date: new Date().toISOString(),
-        discount_percentage: 0,
+        discount_percentage: discountPercentage ?? null,
+        voucher_id: voucherId ?? null
       }])
       .select();
 
@@ -239,7 +277,7 @@ export const bookTicket = async (
     }
     const invoiceId = invoiceData[0].id;
     const isSingleQr = serviceData?.single_qr_sw ?? true;
-    
+
     // Process each category as a separate ticket header
     for (const cat of categories) {
       //Get Category Data
@@ -270,7 +308,7 @@ export const bookTicket = async (
           merchant_service_id,
           ticket_category_id: cat.ticket_category_id,
           ticket_timeslot_id: cat.ticket_timeslot_id,
-          invoice_id:invoiceId,
+          invoice_id: invoiceId,
           booking_date: cat.booking_date || new Date().toISOString(),
           update_by,
           update_date: new Date().toISOString(),
@@ -362,7 +400,7 @@ export const bookTicket = async (
           .from("ticket_detail")
           .insert(detailsToInsert)
           .select();
-       
+
         //Insert Invoice Details
         const { data: dataInvDtl, error: errorInvoiceDtl } = await supabase
           .schema("transaction")

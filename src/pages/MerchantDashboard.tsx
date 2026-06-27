@@ -29,6 +29,8 @@ import {
   Image as ImageIcon,
   IndianRupee,
   Tag,
+  ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 
 const API_URL = "http://localhost:5000/api";
@@ -56,6 +58,33 @@ const MerchantDashboard = () => {
     },
     enabled: !!merchantId,
   });
+
+  // Fetch subscriptions for this merchant
+  const { data: subscriptions, isLoading: isLoadingSubs } = useQuery({
+    queryKey: ["merchant-subscriptions", merchantId],
+    queryFn: async () => {
+      if (!merchantId) return [];
+      const res = await fetch(
+        `${API_URL}/merchant-subscriptions?merchantId=${merchantId}`,
+        {
+          headers: getAuthHeader(),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to fetch subscriptions");
+      return (await res.json()).data;
+    },
+    enabled: !!merchantId,
+  });
+
+  const getServiceSubscription = (serviceId: number) => {
+    return subscriptions?.find((s: any) => s.merchant_service_id === serviceId && s.status_sw);
+  };
+
+  const isSubscriptionActive = (sub: any) => {
+    if (!sub) return false;
+    const today = new Date().toISOString().split("T")[0];
+    return today >= sub.start_date && today <= sub.end_date;
+  };
 
   const stats = [
     {
@@ -140,7 +169,7 @@ const MerchantDashboard = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                {isLoadingServices
+                {isLoadingServices || isLoadingSubs
                   ? (
                     <div className="flex justify-center items-center py-16">
                       <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
@@ -162,113 +191,141 @@ const MerchantDashboard = () => {
                   )
                   : (
                     <div className="grid gap-5">
-                      {services?.map((service: any) => (
-                        <div
-                          key={service.id}
-                          className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg"
-                        >
-                          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                            {/* Left Section */}
-                            <div className="flex items-start gap-4">
-                              <div className="h-16 w-16 overflow-hidden rounded-2xl border bg-gradient-to-br from-indigo-50 to-indigo-100 shadow-sm">
-                                {service.logo_image_path
-                                  ? (
-                                    <img
-                                      src={service.logo_image_path}
-                                      alt={service.name}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  )
-                                  : (
-                                    <div className="flex h-full w-full items-center justify-center">
-                                      <Briefcase className="h-7 w-7 text-indigo-600" />
-                                    </div>
-                                  )}
-                              </div>
+                      {services?.map((service: any) => {
+                        const sub = getServiceSubscription(service.id);
+                        const isActive = isSubscriptionActive(sub);
 
-                              <div className="space-y-2">
-                                <div>
-                                  <h3 className="text-lg font-bold text-slate-900">
-                                    {service.name}
-                                  </h3>
-
-                                  <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-4 w-4 text-indigo-500" />
-                                      {service.start_time} - {service.end_time}
-                                    </span>
-
-                                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
-                                      Active
-                                    </span>
-                                  </div>
+                        return (
+                          <div
+                            key={service.id}
+                            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg"
+                          >
+                            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                              {/* Left Section */}
+                              <div className="flex items-start gap-4">
+                                <div className="h-16 w-16 overflow-hidden rounded-2xl border bg-gradient-to-br from-indigo-50 to-indigo-100 shadow-sm">
+                                  {service.logo_image_path
+                                    ? (
+                                      <img
+                                        src={service.logo_image_path}
+                                        alt={service.name}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    )
+                                    : (
+                                      <div className="flex h-full w-full items-center justify-center">
+                                        <Briefcase className="h-7 w-7 text-indigo-600" />
+                                      </div>
+                                    )}
                                 </div>
 
-                                {service.description && (
-                                  <p className="max-w-2xl text-sm text-slate-600 line-clamp-2">
-                                    {service.description}
-                                  </p>
+                                <div className="space-y-2">
+                                  <div>
+                                    <h3 className="text-lg font-bold text-slate-900">
+                                      {service.name}
+                                    </h3>
+
+                                    <div className="mt-1 flex flex-col gap-1">
+                                      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                                        <span className="flex items-center gap-1">
+                                          <Clock className="h-4 w-4 text-indigo-500" />
+                                          {service.start_time} - {service.end_time}
+                                        </span>
+
+                                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${service.status_sw ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                          {service.status_sw ? 'Service Active' : 'Service Inactive'}
+                                        </span>
+                                      </div>
+                                      
+                                      {/* Subscription Details */}
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <ShieldCheck className={`h-4 w-4 ${isActive ? 'text-emerald-500' : 'text-slate-400'}`} />
+                                        <p className="text-xs font-medium text-slate-500">
+                                          Subscription: {sub ? (
+                                            <span className={isActive ? "text-emerald-600" : "text-red-500"}>
+                                              {sub.start_date} to {sub.end_date} {isActive ? "" : "(Expired)"}
+                                            </span>
+                                          ) : (
+                                            <span className="text-amber-500">No active plan found</span>
+                                          )}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {service.description && (
+                                    <p className="max-w-2xl text-sm text-slate-600 line-clamp-2">
+                                      {service.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Right Section */}
+                              <div className="flex flex-wrap items-center gap-3">
+                                {!isActive && (
+                                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-100 rounded-lg text-[10px] font-bold uppercase animate-pulse">
+                                    <AlertTriangle className="h-3 w-3" /> Booking Disabled
+                                  </div>
                                 )}
+                                
+                                <Link to={`/merchant/book/${service.id}`} className={!isActive ? "pointer-events-none" : ""}>
+                                  <Button
+                                    size="sm"
+                                    disabled={!isActive}
+                                    className="bg-indigo-600 hover:bg-indigo-700 rounded-xl px-5"
+                                  >
+                                    Book Tickets
+                                  </Button>
+                                </Link>
+
+                                <Link to={`/merchant/manage/${service.id}`}>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-600 hover:text-white"
+                                  >
+                                    Manage Tickets
+                                  </Button>
+                                </Link>
+
+                                <Link to={`/merchant/pictures/${service.id}`}>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 gap-1"
+                                  >
+                                    <ImageIcon className="h-4 w-4" />
+                                    Pictures
+                                  </Button>
+                                </Link>
+
+                                <Link to={`/merchant/holidays/${service.id}`}>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 gap-1"
+                                  >
+                                    <CalendarX className="h-4 w-4" />
+                                    Holidays
+                                  </Button>
+                                </Link>
+
+                                <Link to={`/merchant/vouchers/${service.id}`}>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 gap-1"
+                                  >
+                                    <Tag className="h-4 w-4" />
+                                    Vouchers
+                                  </Button>
+                                </Link>
                               </div>
                             </div>
-
-                            {/* Right Section */}
-                            <div className="flex flex-wrap items-center gap-3">
-                              <Link to={`/merchant/book/${service.id}`}>
-                                <Button
-                                  size="sm"
-                                  className="bg-indigo-600 hover:bg-indigo-700 rounded-xl px-5"
-                                >
-                                  Book Tickets
-                                </Button>
-                              </Link>
-
-                              <Link to={`/merchant/manage/${service.id}`}>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-600 hover:text-white"
-                                >
-                                  Manage Tickets
-                                </Button>
-                              </Link>
-
-                              <Link to={`/merchant/pictures/${service.id}`}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 gap-1"
-                                >
-                                  <ImageIcon className="h-4 w-4" />
-                                  Pictures
-                                </Button>
-                              </Link>
-
-                              <Link to={`/merchant/holidays/${service.id}`}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 gap-1"
-                                >
-                                  <CalendarX className="h-4 w-4" />
-                                  Holidays
-                                </Button>
-                              </Link>
-
-                              <Link to={`/merchant/vouchers/${service.id}`}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 gap-1"
-                                >
-                                  <Tag className="h-4 w-4" />
-                                  Vouchers
-                                </Button>
-                              </Link>
-                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
               </CardContent>
