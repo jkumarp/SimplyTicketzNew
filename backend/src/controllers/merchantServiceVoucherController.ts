@@ -78,6 +78,45 @@ export const getMerchantServiceVouchers = async (req: Request, res: Response): P
   }
 };
 
+export const validateMerchantServiceVouchers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { merchantId, serviceId,voucherCode } = req.query;
+    const dtValue = new Date().toISOString().split("T")[0];
+    let query = supabase.schema('master').from('merchant_service_voucher').select('percentage');
+    
+    if (merchantId) {
+      query = query.eq('merchant_id', merchantId);
+    }
+    if (serviceId) {
+      query = query.eq('service_id', serviceId);
+    }
+    if (voucherCode) {
+      query = query.eq('voucher_code', voucherCode);
+    }
+    query = query.gte("end_date", dtValue)
+    query = query.lte("start_date", dtValue)
+    
+    const { data:voucherData, error:voucherError } = await query.maybeSingle();
+
+    if (voucherError) {
+      res.status(400).json({ error: voucherError.message });
+      return;
+    }
+
+    if(!voucherData)
+    {
+      res.status(400).json({ error: "Voucher code not valid" });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      data:voucherData?.percentage ?? 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 /**
  * Update an existing merchant service voucher
  */

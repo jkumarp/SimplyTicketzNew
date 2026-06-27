@@ -50,6 +50,8 @@ import {
   User,
   ShieldAlert,
   Percent,
+  Tag,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -82,6 +84,11 @@ const MerchantTicketBooking = () => {
     email: "",
     payment_mode: "CASH",
   });
+
+  const [voucherCode, setVoucherCode] = useState("");
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
+  const [appliedVoucher, setAppliedVoucher] = useState<string | null>(null);
 
   const getAuthHeader = () => ({
     "Authorization": `Bearer ${localStorage.getItem("token")}`,
@@ -182,6 +189,7 @@ const MerchantTicketBooking = () => {
         sgstPct: 0,
         cgstPct: 0,
         igstPct: 0,
+        discountAmount: 0,
       };
     }
 
@@ -194,19 +202,21 @@ const MerchantTicketBooking = () => {
       }
     });
 
+    const discountAmount = (subtotal * discountPercentage) / 100;
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+
     const sgstPct = service?.sgst ? parseFloat(service.sgst) : 0;
     const cgstPct = service?.cgst ? parseFloat(service.cgst) : 0;
     const igstPct = service?.igst ? parseFloat(service.igst) : 0;
 
-    // Check if the service state is home state (state ID 1 in this context) to determine sgst/cgst vs igst
     const isHomeState = service?.state === 1 || service?.state === "1";
 
-    const sgstAmount = isHomeState ? (subtotal * sgstPct) / 100 : 0;
-    const cgstAmount = isHomeState ? (subtotal * cgstPct) / 100 : 0;
-    const igstAmount = !isHomeState ? (subtotal * igstPct) / 100 : 0;
+    const sgstAmount = isHomeState ? (discountedSubtotal * sgstPct) / 100 : 0;
+    const cgstAmount = isHomeState ? (discountedSubtotal * cgstPct) / 100 : 0;
+    const igstAmount = !isHomeState ? (discountedSubtotal * igstPct) / 100 : 0;
     const gstAmount = sgstAmount + cgstAmount + igstAmount;
 
-    const total = subtotal + gstAmount;
+    const total = discountedSubtotal + gstAmount;
 
     return {
       subtotal,
@@ -219,7 +229,36 @@ const MerchantTicketBooking = () => {
       sgstPct,
       cgstPct,
       igstPct,
+      discountAmount,
     };
+  };
+
+  const handleValidateVoucher = async () => {
+    if (!voucherCode.trim()) {
+      return showError("Please enter a voucher code");
+    }
+    setIsValidatingVoucher(true);
+    try {
+      const res = await fetch(
+        `${API_URL}/merchant-service-vouchers?merchantId=${service.merchant_id}&serviceId=${serviceId}&voucherCode=${encodeURIComponent(
+          voucherCode.trim().toUpperCase()
+        )}`,
+        { headers: getAuthHeader() }
+      );
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Voucher validation failed");
+      }
+      setDiscountPercentage(parseFloat(json.data));
+      setAppliedVoucher(voucherCode.trim().toUpperCase());
+      showSuccess(`Promo Code successfully applied: ${json.data}% discount!`);
+    } catch (err: any) {
+      setDiscountPercentage(0);
+      setAppliedVoucher(null);
+      showError(err.message || "Invalid Voucher Code");
+    } finally {
+      setIsValidatingVoucher(false);
+    }
   };
 
   // Mutations
@@ -325,6 +364,7 @@ const MerchantTicketBooking = () => {
     sgstPct,
     cgstPct,
     igstPct,
+    discountAmount,
   } = calculateTotal();
 
   return (
@@ -797,6 +837,62 @@ const MerchantTicketBooking = () => {
                           ₹{subtotal.toFixed(2)}
                         </span>
                       </div>
+
+                      {/* Voucher / Promo Code Field */}
+                      <div className="pt-2 pb-1 space-y-2 border-t border-slate-100">
+                        <Label className="text-xs font-bold text-slate-600 flex items-center gap-1">
+                          <Tag className="h-3.5 w-3.5 text-indigo-500" /> Voucher Code
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="e.g. FESTIVE10"
+                            className="h-9 uppercase rounded-xl border-slate-200 text-xs focus-visible:ring-indigo-500"
+                            value={voucherCode}
+                            onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                            disabled={appliedVoucher !== null}
+                          />
+                          {appliedVoucher ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 text-xs rounded-xl text-red-500 hover:text-red-600 border-red-200"
+                              onClick={() => {
+                                setDiscountPercentage(0);
+                                setAppliedVoucher(null);
+                                setVoucherCode("");
+                              }}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 text-xs rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold"
+                              onClick={handleValidateVoucher}
+                              disabled={isValidatingVoucher}
+                            >
+                              {isValidatingVoucher ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                "Apply"
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                        {appliedVoucher && (
+                          <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100 flex items-center gap-1 animate-in fade-in duration-200">
+                            <Check className="h-3.5 w-3.5" /> Code {appliedVoucher} applied ({discountPercentage}% off)
+                          </div>
+                        )}
+                      </div>
+
+                      {discountAmount > 0 && (
+                        <div className="flex justify-between items-center text-sm font-semibold text-emerald-600 px-1 animate-in fade-in duration-200">
+                          <span>Promo Discount</span>
+                          <span>-₹{discountAmount.toFixed(2)}</span>
+                        </div>
+                      )}
 
                       {/* SGST & CGST or IGST Breakdown */}
                       {gstAmount > 0 && (
