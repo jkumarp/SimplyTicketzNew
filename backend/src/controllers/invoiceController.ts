@@ -37,7 +37,7 @@ export const createInvoice = async (req: Request, res: Response): Promise<void> 
     const {
       invoice_number,
       merchant_id,
-      ticket_id,
+      customer_id,
       merchant_service_id,
       total_amount,
       scgst_merchant,
@@ -59,7 +59,7 @@ export const createInvoice = async (req: Request, res: Response): Promise<void> 
       .insert([{
         invoice_number,
         merchant_id,
-        ticket_id,
+        customer_id,
         merchant_service_id,
         total_amount,
         scgst_merchant,
