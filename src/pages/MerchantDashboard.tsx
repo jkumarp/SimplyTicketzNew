@@ -65,7 +65,7 @@ const MerchantDashboard = () => {
     queryFn: async () => {
       if (!merchantId) return [];
       const res = await fetch(
-        `${API_URL}/merchant-subscriptions?merchantId=${merchantId}`,
+        `${API_URL}/merchant-active-subscriptions?merchantId=${merchantId}`,
         {
           headers: getAuthHeader(),
         },

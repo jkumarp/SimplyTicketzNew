@@ -35,24 +35,26 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { showError, showSuccess } from "@/utils/toast";
 import {
   ArrowLeft,
   CalendarDays as CalendarIcon,
+  Check,
   Clock,
   Image as ImageIcon,
   Loader2,
   MapPin,
   Minus,
+  Percent,
   Plus,
   Receipt,
+  ShieldAlert,
+  Tag,
   Ticket,
   User,
-  ShieldAlert,
-  Percent,
-  Tag,
-  Check,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -104,6 +106,23 @@ const MerchantTicketBooking = () => {
       });
       const data = await res.json();
       return data.data.find((s: any) => s.id.toString() === serviceId);
+    },
+    enabled: !!serviceId,
+  });
+
+  // Fetch subscriptions for this merchant
+  const { data: subscriptions, isLoading: isLoadingSubs } = useQuery({
+    queryKey: ["merchant-subscriptions", serviceId],
+    queryFn: async () => {
+      if (!serviceId) return [];
+      const res = await fetch(
+        `${API_URL}/merchant-active-subscriptions?serviceId=${serviceId}`,
+        {
+          headers: getAuthHeader(),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to fetch subscriptions");
+      return (await res.json()).data;
     },
     enabled: !!serviceId,
   });
@@ -241,10 +260,12 @@ const MerchantTicketBooking = () => {
     setIsValidatingVoucher(true);
     try {
       const res = await fetch(
-        `${API_URL}/validate-merchant-service-voucher?merchantId=${service.merchant_id}&serviceId=${serviceId}&voucherCode=${encodeURIComponent(
-          voucherCode.trim().toUpperCase()
-        )}`,
-        { headers: getAuthHeader() }
+        `${API_URL}/validate-merchant-service-voucher?merchantId=${service.merchant_id}&serviceId=${serviceId}&voucherCode=${
+          encodeURIComponent(
+            voucherCode.trim().toUpperCase(),
+          )
+        }`,
+        { headers: getAuthHeader() },
       );
       const json = await res.json();
       if (!res.ok) {
@@ -260,6 +281,18 @@ const MerchantTicketBooking = () => {
     } finally {
       setIsValidatingVoucher(false);
     }
+  };
+
+  const getServiceSubscription = (id: number) => {
+    return subscriptions?.find((s: any) =>
+      s.merchant_service_id === id && s.status_sw
+    );
+  };
+
+  const isSubscriptionActive = (sub: any) => {
+    if (!sub) return false;
+    const today = new Date().toISOString().split("T")[0];
+    return today >= sub.start_date && today <= sub.end_date;
   };
 
   // Mutations
@@ -282,7 +315,9 @@ const MerchantTicketBooking = () => {
 
   const handleBuyTickets = () => {
     const totals = calculateTotal();
-    if (totals.count === 0) return showError("Please select at least one ticket");
+    if (totals.count === 0) {
+      return showError("Please select at least one ticket");
+    }
     if (!customerInfo.name || !customerInfo.phone) {
       return showError("Please fill out all required customer details");
     }
@@ -329,7 +364,7 @@ const MerchantTicketBooking = () => {
         sgst: totals.sgstAmount,
         cgst: totals.cgstAmount,
         igst: totals.igstAmount,
-        grand_total: totals.total
+        grand_total: totals.total,
       });
     } catch (err: any) {
       showError(err.message);
@@ -376,6 +411,9 @@ const MerchantTicketBooking = () => {
     igstPct,
     discountAmount,
   } = calculateTotal();
+
+  const sub = getServiceSubscription(parseInt(serviceId!));
+  const isActive = isSubscriptionActive(sub);
 
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col font-sans antialiased">
@@ -424,10 +462,20 @@ const MerchantTicketBooking = () => {
           />
         </div>
 
+        {!isActive && !isLoadingSubs && (
+          <Alert variant="destructive" className="mb-8 border-red-200 bg-red-50 animate-in fade-in slide-in-from-top-2">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertTitle className="font-bold">Subscription Expired</AlertTitle>
+            <AlertDescription className="text-red-700">
+              Your service subscription is either expired or not yet active. Booking is currently disabled. Please contact administration to renew your plan.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Dashboard Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Main Booking Controls */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className={cn("lg:col-span-2 space-y-8", !isActive && "opacity-60 pointer-events-none")}>
             {/* Customer Information Card */}
             <Card className="shadow-sm border-slate-200 bg-white overflow-hidden">
               <CardHeader className="bg-slate-50/70 border-b border-slate-100 py-4">
@@ -563,7 +611,14 @@ const MerchantTicketBooking = () => {
                         </div>
 
                         {/* Pricing Displays */}
-                        <div className={cn("grid gap-4", category.age_restriction_sw ? "grid-cols-2" : "grid-cols-1")}>
+                        <div
+                          className={cn(
+                            "grid gap-4",
+                            category.age_restriction_sw
+                              ? "grid-cols-2"
+                              : "grid-cols-1",
+                          )}
+                        >
                           <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100">
                             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                               Adult Fare
@@ -578,34 +633,48 @@ const MerchantTicketBooking = () => {
                                 Child Fare
                               </span>
                               <span className="text-xl font-black text-slate-800">
-                                ₹{parseFloat(category.child_price || "0.00").toFixed(2)}
+                                ₹{parseFloat(category.child_price || "0.00")
+                                  .toFixed(2)}
                               </span>
                             </div>
                           )}
                         </div>
 
                         {/* Age Restriction Limits & Rules */}
-                        {category.age_restriction_sw && (category.child_age_limit || category.free_age_limit) && (
-                          <div className="text-xs text-indigo-700 bg-indigo-50/50 rounded-xl p-3.5 border border-indigo-100 flex flex-col gap-1.5 animate-in fade-in duration-200">
-                            <span className="font-bold flex items-center gap-1.5 text-indigo-800">
-                              <ShieldAlert className="h-4 w-4 text-indigo-500 shrink-0" />
-                              Age Admission Rules:
-                            </span>
-                            {category.child_age_limit && (
-                              <p>• Child tickets are eligible for children up to <strong>{category.child_age_limit}</strong> years of age.</p>
-                            )}
-                            {category.free_age_limit && (
-                              <p>• Free entry is permitted for toddlers/infants under <strong>{category.free_age_limit}</strong> years of age.</p>
-                            )}
-                          </div>
-                        )}
+                        {category.age_restriction_sw &&
+                          (category.child_age_limit ||
+                            category.free_age_limit) &&
+                          (
+                            <div className="text-xs text-indigo-700 bg-indigo-50/50 rounded-xl p-3.5 border border-indigo-100 flex flex-col gap-1.5 animate-in fade-in duration-200">
+                              <span className="font-bold flex items-center gap-1.5 text-indigo-800">
+                                <ShieldAlert className="h-4 w-4 text-indigo-500 shrink-0" />
+                                Age Admission Rules:
+                              </span>
+                              {category.child_age_limit && (
+                                <p>
+                                  • Child tickets are eligible for children up
+                                  to <strong>{category.child_age_limit}</strong>
+                                  {" "}
+                                  years of age.
+                                </p>
+                              )}
+                              {category.free_age_limit && (
+                                <p>
+                                  • Free entry is permitted for toddlers/infants
+                                  under{" "}
+                                  <strong>{category.free_age_limit}</strong>
+                                  {" "}
+                                  years of age.
+                                </p>
+                              )}
+                            </div>
+                          )}
 
                         {/* Per-Category Schedule */}
                         <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-100">
                           <div className="space-y-2">
                             <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                              <CalendarIcon className="h-3 w-3" />{" "}
-                              Visit Date
+                              <CalendarIcon className="h-3 w-3" /> Visit Date
                             </Label>
                             <Popover>
                               <PopoverTrigger asChild>
@@ -613,24 +682,31 @@ const MerchantTicketBooking = () => {
                                   variant="outline"
                                   className={cn(
                                     "w-full h-10 text-xs font-normal justify-start rounded-xl border-slate-200 focus:ring-indigo-500 bg-white",
-                                    !data.bookingDate && "text-muted-foreground"
+                                    !data.bookingDate &&
+                                      "text-muted-foreground",
                                   )}
                                 >
                                   <CalendarIcon className="mr-2 h-4 w-4 text-slate-400" />
-                                  {data.bookingDate ? (
-                                    format(parseISO(data.bookingDate), "PPP")
-                                  ) : (
-                                    <span>Pick a date</span>
-                                  )}
+                                  {data.bookingDate
+                                    ? (
+                                      format(parseISO(data.bookingDate), "PPP")
+                                    )
+                                    : <span>Pick a date</span>}
                                 </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0 rounded-2xl" align="start">
+                              <PopoverContent
+                                className="w-auto p-0 rounded-2xl"
+                                align="start"
+                              >
                                 <Calendar
                                   mode="single"
                                   selected={selectedDate}
                                   onSelect={(date) => {
                                     if (date) {
-                                      const dateStr = format(date, "yyyy-MM-dd");
+                                      const dateStr = format(
+                                        date,
+                                        "yyyy-MM-dd",
+                                      );
                                       updateCategoryData(category.id, {
                                         bookingDate: dateStr,
                                       });
@@ -725,7 +801,7 @@ const MerchantTicketBooking = () => {
                                   updateCategoryData(category.id, {
                                     child: Math.max(0, data.child - 1),
                                   })}
-                              >
+                                >
                                 <Minus className="h-3 w-3" />
                               </Button>
                               <span className="w-4 text-center font-bold text-sm">
@@ -851,48 +927,53 @@ const MerchantTicketBooking = () => {
                       {/* Voucher / Promo Code Field */}
                       <div className="pt-2 pb-1 space-y-2 border-t border-slate-100">
                         <Label className="text-xs font-bold text-slate-600 flex items-center gap-1">
-                          <Tag className="h-3.5 w-3.5 text-indigo-500" /> Voucher Code
+                          <Tag className="h-3.5 w-3.5 text-indigo-500" />{" "}
+                          Voucher Code
                         </Label>
                         <div className="flex gap-2">
                           <Input
                             placeholder="e.g. FESTIVE10"
                             className="h-9 uppercase rounded-xl border-slate-200 text-xs focus-visible:ring-indigo-500"
                             value={voucherCode}
-                            onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                            onChange={(e) =>
+                              setVoucherCode(e.target.value.toUpperCase())}
                             disabled={appliedVoucher !== null}
                           />
-                          {appliedVoucher ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-9 text-xs rounded-xl text-red-500 hover:text-red-600 border-red-200"
-                              onClick={() => {
-                                setDiscountPercentage(0);
-                                setAppliedVoucher(null);
-                                setVoucherCode("");
-                              }}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-9 text-xs rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold"
-                              onClick={handleValidateVoucher}
-                              disabled={isValidatingVoucher}
-                            >
-                              {isValidatingVoucher ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                "Apply"
-                              )}
-                            </Button>
-                          )}
+                          {appliedVoucher
+                            ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 text-xs rounded-xl text-red-500 hover:text-red-600 border-red-200"
+                                onClick={() => {
+                                  setDiscountPercentage(0);
+                                  setAppliedVoucher(null);
+                                  setVoucherCode("");
+                                }}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            )
+                            : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 text-xs rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold"
+                                onClick={handleValidateVoucher}
+                                disabled={isValidatingVoucher}
+                              >
+                                {isValidatingVoucher
+                                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                                  : (
+                                    "Apply"
+                                  )}
+                              </Button>
+                            )}
                         </div>
                         {appliedVoucher && (
                           <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100 flex items-center gap-1 animate-in fade-in duration-200">
-                            <Check className="h-3.5 w-3.5" /> Code {appliedVoucher} applied ({discountPercentage}% off)
+                            <Check className="h-3.5 w-3.5" /> Code{" "}
+                            {appliedVoucher} applied ({discountPercentage}% off)
                           </div>
                         )}
                       </div>
@@ -913,19 +994,25 @@ const MerchantTicketBooking = () => {
                           {sgstAmount > 0 && (
                             <div className="flex justify-between">
                               <span>SGST ({sgstPct}%)</span>
-                              <span className="font-bold">₹{sgstAmount.toFixed(2)}</span>
+                              <span className="font-bold">
+                                ₹{sgstAmount.toFixed(2)}
+                              </span>
                             </div>
                           )}
                           {cgstAmount > 0 && (
                             <div className="flex justify-between">
                               <span>CGST ({cgstPct}%)</span>
-                              <span className="font-bold">₹{cgstAmount.toFixed(2)}</span>
+                              <span className="font-bold">
+                                ₹{cgstAmount.toFixed(2)}
+                              </span>
                             </div>
                           )}
                           {igstAmount > 0 && (
                             <div className="flex justify-between">
                               <span>IGST ({igstPct}%)</span>
-                              <span className="font-bold">₹{igstAmount.toFixed(2)}</span>
+                              <span className="font-bold">
+                                ₹{igstAmount.toFixed(2)}
+                              </span>
                             </div>
                           )}
                           <div className="flex justify-between pt-1 border-t border-indigo-100 font-bold">
@@ -951,7 +1038,7 @@ const MerchantTicketBooking = () => {
                 <Button
                   onClick={handleBuyTickets}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-sm font-bold rounded-xl shadow-sm transition-all"
-                  disabled={count === 0 || bookingMutation.isPending}
+                  disabled={!isActive || (count === 0 || bookingMutation.isPending)}
                 >
                   {bookingMutation.isPending
                     ? (
