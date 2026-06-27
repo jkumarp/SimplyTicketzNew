@@ -98,6 +98,35 @@ export const getMerchantSubscriptions = async (req: Request, res: Response): Pro
     if (serviceId) {
       query = query.eq('merchant_service_id', serviceId);
     }
+    
+    const { data, error } = await query;
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+export const getActiveMerchantSubscriptions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { merchantId,serviceId } = req.query;
+    let query = supabase.schema('master').from('merchant_subscription').select('*');
+    
+    if (merchantId) {
+      query = query.eq('merchant_id', merchantId);
+    }
+    if (serviceId) {
+      query = query.eq('merchant_service_id', serviceId);
+    }
+    query = query.eq('status_sw', true);
     const { data, error } = await query;
 
     if (error) {
