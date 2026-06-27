@@ -9,13 +9,6 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   ArrowLeft,
   Calendar,
   Clock,
@@ -29,14 +22,9 @@ import {
 const API_URL = "http://localhost:5000/api";
 
 const MerchantPrintTicket = () => {
-  const { ticketId } = useParams();
+  const { ticketId } = useParams(); // Note: ticketId parameter is actually the Invoice ID passed here
   const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
-
-  // State to track selected timeslots for each individual ticket
-  const [selectedTimeslots, setSelectedTimeslots] = useState<
-    Record<string, string>
-  >({});
 
   const getAuthHeader = () => ({
     "Authorization": `Bearer ${localStorage.getItem("token")}`,
@@ -45,42 +33,67 @@ const MerchantPrintTicket = () => {
   const { data: ticketData, isLoading } = useQuery({
     queryKey: ["ticket-full", ticketId],
     queryFn: async () => {
-      // Fetch ticket header
-      const tRes = await fetch(`${API_URL}/tickets`, {
+      // 1. Fetch tickets by Invoice ID
+      const tRes = await fetch(`${API_URL}/tickets-by-invoiceId?invoiceId=${ticketId}`, {
         headers: getAuthHeader(),
       });
       const tickets = (await tRes.json()).data;
-      const ticket = tickets.find((t: any) => t.id.toString() === ticketId);
+      if (!tickets || tickets.length === 0) {
+        throw new Error("No tickets found for this invoice.");
+      }
 
-      // Fetch ticket details
-      const dRes = await fetch(
-        `${API_URL}/ticket-details?ticketId=${ticketId}`,
-        { headers: getAuthHeader() },
-      );
-      const details = (await dRes.json()).data;
+      // Use the first ticket for general service context
+      const sampleTicket = tickets[0];
 
-      // Fetch service & categories for metadata
+      // 2. Fetch service details
       const sRes = await fetch(`${API_URL}/merchant-services`, {
         headers: getAuthHeader(),
       });
       const service = (await sRes.json()).data.find((s: any) =>
-        s.id === ticket.merchant_service_id
+        s.id === sampleTicket.merchant_service_id
       );
 
+      // 3. Fetch categories for service
       const cRes = await fetch(
         `${API_URL}/ticket-categories?merchantServiceId=${service.id}`,
         { headers: getAuthHeader() },
       );
       const categories = (await cRes.json()).data;
 
-      // Fetch timeslots for this merchant
+      // 4. Fetch timeslots for merchant
       const tsRes = await fetch(
         `${API_URL}/ticket-timeslots?merchantId=${service.merchant_id}`,
         { headers: getAuthHeader() },
       );
       const timeslots = (await tsRes.json()).data;
 
-      return { ticket, details, service, categories, timeslots };
+      // 5. Fetch details for each individual ticket header
+      const allDetails: any[] = [];
+      for (const ticket of tickets) {
+        const dRes = await fetch(
+          `${API_URL}/ticket-details?ticketId=${ticket.id}`,
+          { headers: getAuthHeader() },
+        );
+        const details = (await dRes.json()).data || [];
+        details.forEach((d: any) => {
+          allDetails.push({
+            ...d,
+            ticketBookingDate: ticket.booking_date,
+            ticketStatus: ticket.status,
+            ticketHeaderId: ticket.id,
+            ticketTimeslotId: ticket.ticket_timeslot_id,
+          });
+        });
+      }
+
+      // 6. Fetch invoice context for customer details
+      const invRes = await fetch(`${API_URL}/invoices?ticketId=${sampleTicket.id}`, {
+        headers: getAuthHeader(),
+      });
+      const invoices = (await invRes.json()).data || [];
+      const invoice = invoices[0] || null;
+
+      return { tickets, details: allDetails, service, categories, timeslots, invoice };
     },
     enabled: !!ticketId,
   });
@@ -101,7 +114,7 @@ const MerchantPrintTicket = () => {
     );
   }
 
-  const { ticket, details, service, categories, timeslots } = ticketData;
+  const { tickets, details, service, categories, timeslots, invoice } = ticketData;
 
   // Generate individual tickets for each person
   const individualTickets: any[] = [];
@@ -110,11 +123,12 @@ const MerchantPrintTicket = () => {
       c.id === detail.ticket_category_id
     );
 
+    if (!category) return;
+
     // Add Adult tickets
     for (let i = 0; i < detail.adult_count; i++) {
       const uniqueKey = `${detail.id}-A-${i}`;
-      const currentTsId = selectedTimeslots[uniqueKey] ||
-        category.timeslot_id?.toString() || "";
+      const currentTsId = detail.ticketTimeslotId?.toString() || category.timeslot_id?.toString() || "";
 
       individualTickets.push({
         key: uniqueKey,
@@ -123,14 +137,16 @@ const MerchantPrintTicket = () => {
         price: category.adult_price,
         detailId: detail.id,
         timeslotId: currentTsId,
+        ticketHeaderId: detail.ticketHeaderId,
+        bookingDate: detail.ticketBookingDate,
         qrValue: JSON.stringify({
           msid: service.id,
-          tid: ticket.id,
+          tid: detail.ticketHeaderId,
           tdid: detail.id,
           ac: 1,
           cc: 0,
           pr: category.adult_price,
-          dov: ticket.booking_date.split("T")[0],
+          dov: detail.ticketBookingDate.split("T")[0],
           tsid: currentTsId,
         }),
       });
@@ -139,8 +155,7 @@ const MerchantPrintTicket = () => {
     // Add Child tickets
     for (let i = 0; i < detail.child_count; i++) {
       const uniqueKey = `${detail.id}-C-${i}`;
-      const currentTsId = selectedTimeslots[uniqueKey] ||
-        category.timeslot_id?.toString() || "";
+      const currentTsId = detail.ticketTimeslotId?.toString() || category.timeslot_id?.toString() || "";
 
       individualTickets.push({
         key: uniqueKey,
@@ -149,23 +164,21 @@ const MerchantPrintTicket = () => {
         price: category.child_price || "0.00",
         detailId: detail.id,
         timeslotId: currentTsId,
+        ticketHeaderId: detail.ticketHeaderId,
+        bookingDate: detail.ticketBookingDate,
         qrValue: JSON.stringify({
           msid: service.id,
-          tid: ticket.id,
+          tid: detail.ticketHeaderId,
           tdid: detail.id,
           ac: 0,
           cc: 1,
           pr: category.child_price || "0.00",
-          dov: ticket.booking_date.split("T")[0],
+          dov: detail.ticketBookingDate.split("T")[0],
           tsid: currentTsId,
         }),
       });
     }
   });
-
-  const handleTimeslotChange = (ticketKey: string, tsId: string) => {
-    setSelectedTimeslots((prev) => ({ ...prev, [ticketKey]: tsId }));
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -204,7 +217,7 @@ const MerchantPrintTicket = () => {
               return (
                 <Card
                   key={t.key}
-                  className="overflow-hidden border-2 border-slate-200 shadow-none print:shadow-none print:border-slate-300 print:mb-8 print:break-inside-avoid"
+                  className="overflow-hidden border-2 border-slate-200 shadow-none print:shadow-none print:border-slate-300 print:mb-8 print:break-inside-avoid animate-in fade-in duration-200"
                 >
                   <div className="flex flex-col md:flex-row">
                     {/* Left Side: Info */}
@@ -237,7 +250,7 @@ const MerchantPrintTicket = () => {
                             Ticket ID
                           </p>
                           <p className="font-mono font-bold text-slate-900">
-                            #{ticket.id}-{idx + 1}
+                            #{t.ticketHeaderId}-{idx + 1}
                           </p>
                         </div>
                       </div>
@@ -248,7 +261,7 @@ const MerchantPrintTicket = () => {
                             <User className="h-3 w-3" /> Guest Name
                           </p>
                           <p className="font-bold text-slate-900">
-                            {ticket.customer_name}
+                            {invoice?.customer_name || "Guest"}
                           </p>
                         </div>
                         <div className="space-y-1">
@@ -256,7 +269,7 @@ const MerchantPrintTicket = () => {
                             <Calendar className="h-3 w-3" /> Date of Visit
                           </p>
                           <p className="font-bold text-slate-900">
-                            {ticket.booking_date.split("T")[0]}
+                            {t.bookingDate.split("T")[0]}
                           </p>
                         </div>
                         <div className="space-y-1">
@@ -288,7 +301,7 @@ const MerchantPrintTicket = () => {
                             Price Paid
                           </p>
                           <p className="text-xl font-black text-slate-900">
-                            &#8377;{t.price}
+                            ₹{parseFloat(t.price).toFixed(2)}
                           </p>
                         </div>
                       </div>
