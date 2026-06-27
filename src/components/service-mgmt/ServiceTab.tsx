@@ -34,7 +34,7 @@ import {
   MapPinned, History
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const serviceSchema = z.object({
   merchant_id: z.string().min(1, "Merchant is required"),

@@ -29,7 +29,7 @@ import {
 import { showSuccess, showError } from "@/utils/toast";
 import { Clock, Loader2, Pencil, AlertCircle, Ticket, Hash } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const timeslotSchema = z.object({
   merchant_id: z.string().min(1),

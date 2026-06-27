@@ -26,7 +26,7 @@ import {
   Briefcase, Globe, FileCheck, User
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const Merchants = () => {
   const queryClient = useQueryClient();

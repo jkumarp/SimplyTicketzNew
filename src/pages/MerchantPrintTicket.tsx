@@ -19,7 +19,7 @@ import {
   User,
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api";
+import { API_URL } from "@/config";
 
 const MerchantPrintTicket = () => {
   const { ticketId } = useParams(); // Note: ticketId parameter is actually the Invoice ID passed here

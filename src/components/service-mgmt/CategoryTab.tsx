@@ -30,7 +30,7 @@ import {
 import { showSuccess, showError } from "@/utils/toast";
 import { Ticket, Loader2, IndianRupee, Pencil, X, AlertCircle, Info, Users } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const categorySchema = z.object({
   merchant_service_id: z.string().min(1, "Service is required"),
