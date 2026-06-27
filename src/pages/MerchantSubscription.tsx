@@ -35,7 +35,7 @@ import {
   Smartphone, Monitor, Users, DollarSign, RefreshCcw
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const subscriptionSchema = z.object({
   merchant_id: z.string().min(1, "Merchant is required"),

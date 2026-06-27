@@ -52,9 +52,9 @@ import {
   ShieldAlert,
   Tag,
   Ticket,
-  User,
   X,
   AlertTriangle,
+  WalletCards,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -81,12 +81,8 @@ const MerchantTicketBooking = () => {
   const [bookingState, setBookingState] = useState<BookingState>({
     counts: {},
   });
-  const [customerInfo, setCustomerInfo] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    payment_mode: "CASH",
-  });
+  
+  const [paymentMode, setPaymentMode] = useState("CASH");
 
   const [voucherCode, setVoucherCode] = useState("");
   const [discountPercentage, setDiscountPercentage] = useState(0);
@@ -318,9 +314,6 @@ const MerchantTicketBooking = () => {
     if (totals.count === 0) {
       return showError("Please select at least one ticket");
     }
-    if (!customerInfo.name || !customerInfo.phone) {
-      return showError("Please fill out all required customer details");
-    }
 
     try {
       const selectedCategories = Object.entries(bookingState.counts)
@@ -347,11 +340,11 @@ const MerchantTicketBooking = () => {
         });
 
       bookingMutation.mutate({
-        customer_name: customerInfo.name,
-        customer_phone: customerInfo.phone,
+        customer_name: "Walk-in Guest", // Default for walk-ins
+        customer_phone: "",
         customer_phone_code: 91,
-        email: customerInfo.email,
-        payment_mode: customerInfo.payment_mode,
+        email: "",
+        payment_mode: paymentMode,
         merchant_id: service.merchant_id,
         merchant_service_id: parseInt(serviceId!),
         categories: selectedCategories,
@@ -476,69 +469,22 @@ const MerchantTicketBooking = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Main Booking Controls */}
           <div className={cn("lg:col-span-2 space-y-8", !isActive && "opacity-60 pointer-events-none")}>
-            {/* Customer Information Card */}
+            
+            {/* Transaction Settings Card (Payment Method) */}
             <Card className="shadow-sm border-slate-200 bg-white overflow-hidden">
               <CardHeader className="bg-slate-50/70 border-b border-slate-100 py-4">
                 <CardTitle className="text-base font-semibold flex items-center gap-2 text-slate-800">
-                  <User className="h-4 w-4 text-indigo-600" /> Customer Details
+                  <WalletCards className="h-4 w-4 text-indigo-600" /> Transaction Settings
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <Label className="text-slate-600 font-medium">
-                    Full Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    placeholder="e.g. John Doe"
-                    className="rounded-xl border-slate-200 focus-visible:ring-indigo-500"
-                    value={customerInfo.name}
-                    onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        name: e.target.value,
-                      })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-slate-600 font-medium">
-                    Mobile Number <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    placeholder="10-digit mobile number"
-                    maxLength={10}
-                    className="rounded-xl border-slate-200 focus-visible:ring-indigo-500"
-                    value={customerInfo.phone}
-                    onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        phone: e.target.value,
-                      })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-slate-600 font-medium">
-                    Email Address
-                  </Label>
-                  <Input
-                    type="email"
-                    placeholder="name@company.com"
-                    className="rounded-xl border-slate-200 focus-visible:ring-indigo-500"
-                    value={customerInfo.email}
-                    onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        email: e.target.value,
-                      })}
-                  />
-                </div>
-                <div className="space-y-2">
+              <CardContent className="pt-6">
+                <div className="max-w-xs space-y-2">
                   <Label className="text-slate-600 font-medium">
                     Payment Method
                   </Label>
                   <Select
-                    value={customerInfo.payment_mode}
-                    onValueChange={(v) =>
-                      setCustomerInfo({ ...customerInfo, payment_mode: v })}
+                    value={paymentMode}
+                    onValueChange={setPaymentMode}
                   >
                     <SelectTrigger className="rounded-xl border-slate-200 focus:ring-indigo-500">
                       <SelectValue />

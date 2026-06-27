@@ -29,7 +29,7 @@ import {
 import { showSuccess, showError } from "@/utils/toast";
 import { Smartphone, Loader2, Pencil, X, AlertCircle, Hash, Phone, ShieldCheck } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const deviceSchema = z.object({
   merchant_id: z.string().min(1),

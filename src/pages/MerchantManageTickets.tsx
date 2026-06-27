@@ -16,7 +16,7 @@ import {
   ChevronRight, Download
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const MerchantManageTickets = () => {
   const { serviceId } = useParams();

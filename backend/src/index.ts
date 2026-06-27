@@ -24,7 +24,6 @@ import merchantServiceVoucherRoutes from './routes/merchantServiceVoucherRoutes'
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 
-
 dotenv.config();
 
 const app = express();

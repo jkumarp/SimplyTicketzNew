@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { showSuccess, showError } from "@/utils/toast";
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const Navbar = () => {
   const [user, setUser] = useState<any>(null);

@@ -7,13 +7,12 @@ import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from 'react-router-dom';
+import { API_URL } from "@/config";
 import { 
   Users, Store, Ticket, TrendingUp, 
   AlertCircle, ArrowRight,
   BarChart3, Activity, MessageSquare
 } from 'lucide-react';
-
-const API_URL = 'http://localhost:5000/api';
 
 const AdminDashboard = () => {
   const getAuthHeader = () => {
