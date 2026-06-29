@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -28,9 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { showSuccess, showError } from "@/utils/toast";
 import { 
-  Building2, User, FileText, Eye, Loader2, ArrowLeft, 
-  Search, CheckCircle2, Shield, Settings, Mail, Phone,
-  Pencil, X, FolderOpen
+  Building2, User, FileText, Eye, Loader2, MapPin, CreditCard,
+  Pencil, X, FolderOpen, Upload, FileCheck, Mail, Phone
 } from 'lucide-react';
 
 import { API_URL } from "@/config";
@@ -41,20 +40,8 @@ const Merchants = () => {
   const [viewingMerchantDocs, setViewingMerchantDocs] = useState<any>(null);
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isResolvingDoc, setIsResolvingDoc] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState<string | null>(null);
 
-  const [files, setFiles] = useState<{ [key: string]: File | null }>({
-    pan: null,
-    aadhaar: null,
-    gstn: null,
-    sin: null,
-    tin: null,
-    moa: null,
-    aoa: null,
-    trading: null,
-    director: null,
-    partnership: null
-  });
-  
   const [formData, setFormData] = useState({
     organization_sw: true,
     contact_person_name: '',
@@ -80,7 +67,17 @@ const Merchants = () => {
     kyc_completed_sw: false,
     agreement_signed_sw: false,
     status_sw: true,
-    update_by: '1'
+    update_by: '1',
+    pan_docid: '',
+    aadhaar_docid: '',
+    gstn_docid: '',
+    sin_docid: '',
+    tin_docid: '',
+    moa_docid: '',
+    aoa_docid: '',
+    trading_certificate_docid: '',
+    director_information_docid: '',
+    partnership_agreement_docid: ''
   });
 
   const getAuthHeader = () => {
@@ -110,9 +107,9 @@ const Merchants = () => {
     }
   });
 
-  const selectedCountry = formwatchcountry => formData.country;
+  const selectedCountry = formData.country;
 
-  const { data: states, isSuccess: isStatesLoaded } = useQuery({
+  const { data: states, isLoading: isLoadingStates, isSuccess: isStatesLoaded } = useQuery({
     queryKey: ['states', selectedCountry],
     queryFn: async () => {
       if (!selectedCountry) return [];
@@ -126,7 +123,6 @@ const Merchants = () => {
     mutationFn: async (data: any) => {
       const payload = {
         ...data,
-        merchant_id: data.merchant_id ? parseInt(data.merchant_id) : null,
         state: data.state ? parseInt(data.state) : null,
         pincode: data.pincode ? parseInt(data.pincode) : null,
         country: parseInt(data.country),
@@ -154,14 +150,57 @@ const Merchants = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['merchants'] });
       showSuccess(editingId ? 'Merchant updated!' : 'Merchant created!');
-      setEditingId(null);
-      setFiles({
-        pan: null, aadhaar: null, gstn: null, sin: null, tin: null,
-        moa: null, aoa: null, trading: null, director: null, partnership: null
-      });
+      resetForm();
     },
     onError: (error: any) => showError(error.message)
   });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fieldKey: string) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setIsUploading(fieldKey);
+      try {
+        const formDataPayload = new FormData();
+        formDataPayload.append('file', file);
+        
+        const res = await fetch(`${API_URL}/documents/upload`, {
+          method: 'POST',
+          headers: getAuthHeader(),
+          body: formDataPayload
+        });
+        
+        if (!res.ok) throw new Error('Upload failed');
+        const json = await res.json();
+        const path = json.data.path;
+        
+        const docIdFieldMap: { [key: string]: string } = {
+          pan: 'pan_docid',
+          aadhaar: 'aadhaar_docid',
+          gstn: 'gstn_docid',
+          sin: 'sin_docid',
+          tin: 'tin_docid',
+          moa: 'moa_docid',
+          aoa: 'aoa_docid',
+          trading: 'trading_certificate_docid',
+          director: 'director_information_docid',
+          partnership: 'partnership_agreement_docid'
+        };
+        
+        const targetField = docIdFieldMap[fieldKey];
+        if (targetField) {
+          setFormData(prev => ({
+            ...prev,
+            [targetField]: path
+          }));
+          showSuccess(`${fieldKey.toUpperCase()} uploaded successfully!`);
+        }
+      } catch (err: any) {
+        showError(err.message || 'Failed to upload document');
+      } finally {
+        setIsUploading(null);
+      }
+    }
+  };
 
   const viewDocument = async (path: string) => {
     setIsResolvingDoc(path);
@@ -206,9 +245,60 @@ const Merchants = () => {
       kyc_completed_sw: !!merchant.kyc_completed_sw,
       agreement_signed_sw: !!merchant.agreement_signed_sw,
       status_sw: !!merchant.status_sw,
-      update_by: '1'
+      update_by: '1',
+      pan_docid: merchant.pan_docid || '',
+      aadhaar_docid: merchant.aadhaar_docid || '',
+      gstn_docid: merchant.gstn_docid || '',
+      sin_docid: merchant.sin_docid || '',
+      tin_docid: merchant.tin_docid || '',
+      moa_docid: merchant.moa_docid || '',
+      aoa_docid: merchant.aoa_docid || '',
+      trading_certificate_docid: merchant.trading_certificate_docid || '',
+      director_information_docid: merchant.director_information_docid || '',
+      partnership_agreement_docid: merchant.partnership_agreement_docid || ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData({
+      organization_sw: true,
+      contact_person_name: '',
+      organization_name: '',
+      brand_name: '',
+      email: '',
+      phone_country_code: '91',
+      phone: '',
+      contact_phone: '',
+      contact_email: '',
+      pan_number: '',
+      aadhaar_number: '',
+      gstn: '',
+      sin_number: '',
+      tin_number: '',
+      addressline1: '',
+      addressline2: '',
+      city: '',
+      state: '',
+      pincode: '',
+      country: '1',
+      gstn_state: '',
+      kyc_completed_sw: false,
+      agreement_signed_sw: false,
+      status_sw: true,
+      update_by: '1',
+      pan_docid: '',
+      aadhaar_docid: '',
+      gstn_docid: '',
+      sin_docid: '',
+      tin_docid: '',
+      moa_docid: '',
+      aoa_docid: '',
+      trading_certificate_docid: '',
+      director_information_docid: '',
+      partnership_agreement_docid: ''
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -224,8 +314,7 @@ const Merchants = () => {
     if (!formData.email) return showError("Primary Email Address is required");
     if (!formData.phone) return showError("Primary Phone Number is required");
 
-    if (editingId) updateMutation.mutate(formData);
-    else createMutation.mutate(formData);
+    mutation.mutate(formData);
   };
 
   const getMerchantDocsList = (merchant: any) => {
@@ -533,13 +622,16 @@ const Merchants = () => {
               <Card className="shadow-lg border-indigo-100 overflow-hidden">
                 <CardHeader className="bg-indigo-600 text-white">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Upload className="h-5 w-5" />
+                    <FolderOpen className="h-5 w-5" />
                     Mandatory Documents
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
                   <div className="space-y-2">
-                    <Label>PAN Card *</Label>
+                    <Label className="flex items-center gap-2">
+                      PAN Card * 
+                      {formData.pan_number && <span className="text-[10px] text-indigo-600 font-bold">({formData.pan_number})</span>}
+                    </Label>
                     <Input type="file" onChange={(e) => handleFileChange(e, 'pan')} />
                   </div>
                   <div className="space-y-2">
@@ -557,7 +649,7 @@ const Merchants = () => {
                 <Card className="shadow-lg border-slate-200 overflow-hidden">
                   <CardHeader className="bg-slate-900 text-white">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      <FileCheck className="h-5 w-5" />
+                      <FileText className="h-5 w-5" />
                       Other Documents
                     </CardTitle>
                   </CardHeader>
@@ -598,9 +690,9 @@ const Merchants = () => {
                 form="merchant-form"
                 type="submit" 
                 className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-lg font-bold rounded-2xl shadow-lg shadow-indigo-100"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                disabled={mutation.isPending}
               >
-                {createMutation.isPending || updateMutation.isPending ? (
+                {mutation.isPending ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span>Uploading & Saving...</span>
