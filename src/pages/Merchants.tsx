@@ -18,12 +18,19 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { showSuccess, showError } from "@/utils/toast";
 import { 
-  Store, Loader2, Mail, Phone, MapPin, FileText, 
-  ShieldCheck, Building2, Upload, CheckCircle2, 
-  CreditCard, ClipboardCheck, Pencil, X, Eye,
-  Briefcase, Globe, FileCheck, User
+  Building2, User, FileText, Eye, Loader2, ArrowLeft, 
+  Search, CheckCircle2, Shield, Settings, Mail, Phone,
+  Pencil, X, FolderOpen
 } from 'lucide-react';
 
 import { API_URL } from "@/config";
@@ -31,6 +38,10 @@ import { API_URL } from "@/config";
 const Merchants = () => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingMerchantDocs, setViewingMerchantDocs] = useState<any>(null);
+  const [isDocsOpen, setIsDocsOpen] = useState(false);
+  const [isResolvingDoc, setIsResolvingDoc] = useState<string | null>(null);
+
   const [files, setFiles] = useState<{ [key: string]: File | null }>({
     pan: null,
     aadhaar: null,
@@ -95,230 +106,81 @@ const Merchants = () => {
       const res = await fetch(`${API_URL}/countries`, {
         headers: { ...getAuthHeader() }
       });
-      const json = await res.json();
-      return json.data;
+      return (await res.json()).data;
     }
   });
 
-  const { data: states, isLoading: isLoadingStates } = useQuery({
-    queryKey: ['states', formData.country],
+  const selectedCountry = formwatchcountry => formData.country;
+
+  const { data: states, isSuccess: isStatesLoaded } = useQuery({
+    queryKey: ['states', selectedCountry],
     queryFn: async () => {
-      if (!formData.country) return [];
-      const res = await fetch(`${API_URL}/states?countryId=${formData.country}`, {
-        headers: { ...getAuthHeader() }
-      });
-      const json = await res.json();
-      return json.data;
+      if (!selectedCountry) return [];
+      const res = await fetch(`${API_URL}/states?countryId=${selectedCountry}`, { headers: getAuthHeader() });
+      return (await res.json()).data;
     },
-    enabled: !!formData.country
+    enabled: !!selectedCountry
   });
 
-  const uploadFile = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch(`${API_URL}/documents/upload`, {
-      method: 'POST',
-      headers: { ...getAuthHeader() },
-      body: formData
-    });
-    if (!res.ok) throw new Error(`Failed to upload ${file.name}`);
-    const json = await res.json();
-    return json.data.path;
-  };
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      const payload = {
+        ...data,
+        merchant_id: data.merchant_id ? parseInt(data.merchant_id) : null,
+        state: data.state ? parseInt(data.state) : null,
+        pincode: data.pincode ? parseInt(data.pincode) : null,
+        country: parseInt(data.country),
+        update_by: parseInt(data.update_by)
+      };
+
+      const url = editingId ? `${API_URL}/merchants/${editingId}` : `${API_URL}/merchants`;
+      const method = editingId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Operation failed');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchants'] });
+      showSuccess(editingId ? 'Merchant updated!' : 'Merchant created!');
+      setEditingId(null);
+      setFiles({
+        pan: null, aadhaar: null, gstn: null, sin: null, tin: null,
+        moa: null, aoa: null, trading: null, director: null, partnership: null
+      });
+    },
+    onError: (error: any) => showError(error.message)
+  });
 
   const viewDocument = async (path: string) => {
+    setIsResolvingDoc(path);
     try {
-      const res = await fetch(`${API_URL}/documents/signed-url?path=${path}`, {
+      const res = await fetch(`${API_URL}/documents/signed-url?path=${encodeURIComponent(path)}`, {
         headers: { ...getAuthHeader() }
       });
       if (!res.ok) throw new Error('Failed to get document link');
       const json = await res.json();
       window.open(json.data, '_blank');
     } catch (err: any) {
-      showError(err.message);
+      showError(err.message || 'Error opening asset file');
+    } finally {
+      setIsResolvingDoc(null);
     }
-  };
-
-  const resetForm = () => {
-    setEditingId(null);
-    setFiles({ 
-      pan: null, aadhaar: null, gstn: null, sin: null, tin: null, 
-      moa: null, aoa: null, trading: null, director: null, partnership: null 
-    });
-    setFormData({
-      organization_sw: true,
-      contact_person_name: '',
-      organization_name: '',
-      brand_name: '',
-      email: '',
-      phone_country_code: '91',
-      phone: '',
-      contact_phone: '',
-      contact_email: '',
-      pan_number: '',
-      aadhaar_number: '',
-      gstn: '',
-      sin_number: '',
-      tin_number: '',
-      addressline1: '',
-      addressline2: '',
-      city: '',
-      state: '',
-      pincode: '',
-      country: '1',
-      gstn_state: '',
-      kyc_completed_sw: false,
-      agreement_signed_sw: false,
-      status_sw: true,
-      update_by: '1'
-    });
-  };
-
-  const createMutation = useMutation({
-    mutationFn: async (newMerchant: any) => {
-      if (!files.pan || !files.aadhaar) {
-        throw new Error('PAN and AADHAAR documents are mandatory');
-      }
-
-      const pan_docid = await uploadFile(files.pan);
-      const aadhaar_docid = await uploadFile(files.aadhaar);
-      
-      const gstn_docid = files.gstn ? await uploadFile(files.gstn) : '';
-      const sin_docid = files.sin ? await uploadFile(files.sin) : '';
-      const tin_docid = files.tin ? await uploadFile(files.tin) : '';
-      const moa_docid = files.moa ? await uploadFile(files.moa) : '';
-      const aoa_docid = files.aoa ? await uploadFile(files.aoa) : '';
-      const trading_certificate_docid = files.trading ? await uploadFile(files.trading) : '';
-      const director_information_docid = files.director ? await uploadFile(files.director) : '';
-      const partnership_agreement_docid = files.partnership ? await uploadFile(files.partnership) : '';
-
-      const payload = {
-        ...newMerchant,
-        pan_docid,
-        aadhaar_docid,
-        gstn_docid,
-        sin_docid,
-        tin_docid,
-        moa_docid,
-        aoa_docid,
-        trading_certificate_docid,
-        director_information_docid,
-        partnership_agreement_docid,
-        update_date: new Date().toISOString(),
-        phone_country_code: parseInt(newMerchant.phone_country_code),
-        state: newMerchant.state ? parseInt(newMerchant.state) : null,
-        gstn: newMerchant.gstn ? parseInt(newMerchant.gstn) : null,
-        gstn_state: newMerchant.gstn_state ? parseInt(newMerchant.gstn_state) : null,
-        pincode: newMerchant.pincode ? parseInt(newMerchant.pincode) : null,
-        country: parseInt(newMerchant.country),
-        update_by: parseInt(newMerchant.update_by)
-      };
-
-      const res = await fetch(`${API_URL}/merchants`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...getAuthHeader()
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (!res.ok) throw new Error('Failed to register merchant');
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['merchants'] });
-      showSuccess('Merchant registered successfully!');
-      resetForm();
-    },
-    onError: (error: any) => {
-      showError(error.message);
-    }
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (updatedMerchant: any) => {
-      const docIds: any = {};
-      
-      const fileKeys = [
-        { key: 'pan', field: 'pan_docid' },
-        { key: 'aadhaar', field: 'aadhaar_docid' },
-        { key: 'gstn', field: 'gstn_docid' },
-        { key: 'sin', field: 'sin_docid' },
-        { key: 'tin', field: 'tin_docid' },
-        { key: 'moa', field: 'moa_docid' },
-        { key: 'aoa', field: 'aoa_docid' },
-        { key: 'trading', field: 'trading_certificate_docid' },
-        { key: 'director', field: 'director_information_docid' },
-        { key: 'partnership', field: 'partnership_agreement_docid' }
-      ];
-
-      for (const item of fileKeys) {
-        if (files[item.key]) {
-          docIds[item.field] = await uploadFile(files[item.key]!);
-        }
-      }
-
-      const payload = {
-        ...updatedMerchant,
-        ...docIds,
-        update_date: new Date().toISOString(),
-        phone_country_code: parseInt(updatedMerchant.phone_country_code),
-        state: updatedMerchant.state ? parseInt(updatedMerchant.state) : null,
-        pincode: updatedMerchant.pincode ? parseInt(updatedMerchant.pincode) : null,
-        country: parseInt(updatedMerchant.country),
-        update_by: parseInt(updatedMerchant.update_by)
-      };
-
-      const res = await fetch(`${API_URL}/merchants/${editingId}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...getAuthHeader()
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (!res.ok) throw new Error('Failed to update merchant');
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['merchants'] });
-      showSuccess('Merchant updated successfully!');
-      resetForm();
-    },
-    onError: (error: any) => {
-      showError(error.message);
-    }
-  });
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
-    if (e.target.files && e.target.files[0]) {
-      setFiles(prev => ({ ...prev, [type]: e.target.files![0] }));
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Manual validation for mandatory fields
-    if (formData.organization_sw && !formData.organization_name) {
-      return showError("Organization Name is required");
-    }
-    if (!formData.brand_name) return showError("Brand Name is required");
-    if (!formData.city) return showError("City is required");
-    if (!formData.addressline1) return showError("Address Line 1 is required");
-    if (!formData.pan_number) return showError("PAN Number is required");
-    if (!formData.aadhaar_number) return showError("Aadhaar Number is required");
-    if (!formData.email) return showError("Primary Email Address is required");
-    if (!formData.phone) return showError("Primary Phone Number is required");
-
-    if (editingId) updateMutation.mutate(formData);
-    else createMutation.mutate(formData);
   };
 
   const handleEdit = (merchant: any) => {
-    setEditingId(merchant.id);
+    setEditingId(merchant.id.toString());
     setFormData({
       organization_sw: !!merchant.organization_sw,
       contact_person_name: merchant.contact_person_name || '',
@@ -349,6 +211,44 @@ const Merchants = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.organization_sw && !formData.organization_name) {
+      return showError("Organization Name is required");
+    }
+    if (!formData.brand_name) return showError("Brand Name is required");
+    if (!formData.city) return showError("City is required");
+    if (!formData.addressline1) return showError("Address Line 1 is required");
+    if (!formData.pan_number) return showError("PAN Number is required");
+    if (!formData.aadhaar_number) return showError("Aadhaar Number is required");
+    if (!formData.email) return showError("Primary Email Address is required");
+    if (!formData.phone) return showError("Primary Phone Number is required");
+
+    if (editingId) updateMutation.mutate(formData);
+    else createMutation.mutate(formData);
+  };
+
+  const getMerchantDocsList = (merchant: any) => {
+    if (!merchant) return [];
+    return [
+      { key: 'pan', label: 'PAN Card Certificate', path: merchant.pan_docid },
+      { key: 'aadhaar', label: 'Aadhaar Card Reference', path: merchant.aadhaar_docid },
+      { key: 'gstn', label: 'GSTN Registration Document', path: merchant.gstn_docid },
+      { key: 'sin', label: 'SIN Document', path: merchant.sin_docid },
+      { key: 'tin', label: 'TIN Document', path: merchant.tin_docid },
+      { key: 'moa', label: 'Memorandum of Association (MOA)', path: merchant.moa_docid },
+      { key: 'aoa', label: 'Articles of Association (AOA)', path: merchant.aoa_docid },
+      { key: 'trading', label: 'Trading Certificate', path: merchant.trading_certificate_docid },
+      { key: 'director', label: 'Director Information Ledger', path: merchant.director_information_docid },
+      { key: 'partnership', label: 'Partnership Agreement', path: merchant.partnership_agreement_docid }
+    ].filter(doc => !!doc.path);
+  };
+
+  const handleOpenDocsModal = (merchant: any) => {
+    setViewingMerchantDocs(merchant);
+    setIsDocsOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
@@ -370,7 +270,7 @@ const Merchants = () => {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            <Card key={editingId || 'new-merchant'} className="xl:col-span-2 shadow-lg border-indigo-100">
+            <Card className="xl:col-span-2 shadow-lg border-indigo-100">
               <CardHeader className="bg-indigo-50/30 border-b">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <CardTitle className="flex items-center gap-2 text-indigo-700">
@@ -630,7 +530,7 @@ const Merchants = () => {
             </Card>
 
             <div className="space-y-8">
-              <Card key={`docs-${editingId || 'new'}`} className="shadow-lg border-indigo-100 overflow-hidden">
+              <Card className="shadow-lg border-indigo-100 overflow-hidden">
                 <CardHeader className="bg-indigo-600 text-white">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Upload className="h-5 w-5" />
@@ -736,13 +636,13 @@ const Merchants = () => {
                         <TableRow key={merchant.id} className="hover:bg-slate-50/50 transition-colors">
                           <TableCell>
                             {merchant.organization_sw ? (
-                              <div className="bg-indigo-50 text-indigo-700 p-1.5 rounded-lg w-fit" title="Organization">
-                                <Building2 className="h-4 w-4" />
-                              </div>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                <Building2 className="h-3.5 w-3.5" /> Organization
+                              </span>
                             ) : (
-                              <div className="bg-slate-100 text-slate-600 p-1.5 rounded-lg w-fit" title="Individual">
-                                <User className="h-4 w-4" />
-                              </div>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                <User className="h-3.5 w-3.5" /> Individual
+                              </span>
                             )}
                           </TableCell>
                           <TableCell>
@@ -779,7 +679,20 @@ const Merchants = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600 hover:bg-indigo-700 hover:bg-indigo-50" onClick={() => handleEdit(merchant)}>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 gap-1 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold"
+                                onClick={() => handleOpenDocsModal(merchant)}
+                              >
+                                <FolderOpen className="h-3.5 w-3.5" /> Documents
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-indigo-600 hover:bg-indigo-50" 
+                                onClick={() => handleEdit(merchant)}
+                              >
                                 <Pencil className="h-4 w-4" />
                               </Button>
                             </div>
@@ -794,6 +707,83 @@ const Merchants = () => {
           </Card>
         </div>
       </main>
+
+      {/* Uploaded Documents Viewer Dialog */}
+      <Dialog open={isDocsOpen} onOpenChange={setIsDocsOpen}>
+        <DialogContent className="sm:max-w-[500px] rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-600">
+              <FolderOpen className="h-5 w-5" /> Document Portfolio
+            </DialogTitle>
+            <DialogDescription className="text-slate-500">
+              Review active document credentials submitted by{" "}
+              <strong className="text-slate-800">
+                {viewingMerchantDocs?.organization_sw
+                  ? viewingMerchantDocs?.organization_name
+                  : viewingMerchantDocs?.contact_person_name}
+              </strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-3">
+            {viewingMerchantDocs ? (
+              (() => {
+                const docsList = getMerchantDocsList(viewingMerchantDocs);
+                if (docsList.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-slate-400 italic text-sm">
+                      No documents have been uploaded for this merchant account.
+                    </div>
+                  );
+                }
+
+                return docsList.map((doc) => (
+                  <div
+                    key={doc.key}
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-50/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">
+                          {doc.label}
+                        </p>
+                        <p className="text-[10px] font-mono text-slate-400 truncate max-w-[200px]">
+                          {doc.path}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 h-8 gap-1.5 font-bold"
+                      onClick={() => viewDocument(doc.path)}
+                      disabled={isResolvingDoc === doc.path}
+                    >
+                      {isResolvingDoc === doc.path ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <Eye className="h-3.5 w-3.5" /> View
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ));
+              })()
+            ) : null}
+          </div>
+
+          <DialogFooter className="border-t pt-4">
+            <Button variant="outline" className="w-full" onClick={() => setIsDocsOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>
