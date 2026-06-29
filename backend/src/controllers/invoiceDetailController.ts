@@ -32,6 +32,54 @@ export const getInvoiceDetails = async (req: Request, res: Response): Promise<vo
   }
 };
 
+export const getInvoiceDetailByMerchantId = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { merchantId, startDate, endDate } = req.query;
+
+    let query = supabase
+      .schema("transaction")
+      .from("invoice_detail")
+      .select(`
+        *,
+        invoice!inner (
+          id,
+          merchant_id,
+          merchant_service_id,
+          total_amount
+        )
+      `);
+
+    if (merchantId) {
+      query = query.eq("invoice.merchant_id", merchantId);
+    }
+
+    if (startDate) {
+      query = query.gte("invoice.transaction_date", startDate);
+    }
+    if (endDate) {
+      query = query.lte("invoice.transaction_date", endDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 export const createInvoiceDetail = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
