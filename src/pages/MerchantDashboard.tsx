@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -13,6 +13,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Briefcase,
   Calendar,
@@ -31,18 +39,52 @@ import {
   Tag,
   ShieldCheck,
   AlertTriangle,
+  TrendingUp,
 } from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as ChartTooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
-import { API_URL } from "@/config";
+const API_URL = "http://localhost:5000/api";
+const COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#14b8a6"];
 
 const MerchantDashboard = () => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const merchantId = user.merchant_id;
+  const [dateFilter, setDateFilter] = useState("month");
 
   const getAuthHeader = () => ({
     "Authorization": `Bearer ${localStorage.getItem("token")}`,
   });
 
+  // Calculate Date Ranges
+  const dateRange = useMemo(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    if (dateFilter === "today") {
+      // Start of today, end of today
+    } else if (dateFilter === "5days") {
+      start.setDate(start.getDate() - 5);
+    } else if (dateFilter === "15days") {
+      start.setDate(start.getDate() - 15);
+    } else if (dateFilter === "month") {
+      start.setMonth(start.getMonth() - 1);
+    }
+
+    return {
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+    };
+  }, [dateFilter]);
+
+  // Fetch Services
   const { data: services, isLoading: isLoadingServices } = useQuery({
     queryKey: ["merchant-services", merchantId],
     queryFn: async () => {
@@ -59,19 +101,62 @@ const MerchantDashboard = () => {
     enabled: !!merchantId,
   });
 
-  // Fetch subscriptions for this merchant
+  // Fetch all categories for lookup
+  const { data: allCategories } = useQuery({
+    queryKey: ["all-categories", merchantId],
+    queryFn: async () => {
+      if (!merchantId) return [];
+      const res = await fetch(`${API_URL}/ticket-categories`, {
+        headers: getAuthHeader(),
+      });
+      return (await res.json()).data;
+    },
+    enabled: !!merchantId,
+  });
+
+  // Fetch Subscriptions
   const { data: subscriptions, isLoading: isLoadingSubs } = useQuery({
     queryKey: ["merchant-subscriptions", merchantId],
     queryFn: async () => {
       if (!merchantId) return [];
       const res = await fetch(
-        `${API_URL}/merchant-active-subscriptions?merchantId=${merchantId}`,
+        `${API_URL}/merchant-subscriptions?merchantId=${merchantId}`,
         {
           headers: getAuthHeader(),
         },
       );
       if (!res.ok) throw new Error("Failed to fetch subscriptions");
       return (await res.json()).data;
+    },
+    enabled: !!merchantId,
+  });
+
+  // Fetch Ticket Details by Merchant and Date Filter
+  const { data: ticketDetails, isLoading: isLoadingTickets } = useQuery({
+    queryKey: ["ticket-details-by-merchant", merchantId, dateFilter],
+    queryFn: async () => {
+      if (!merchantId) return [];
+      const res = await fetch(
+        `${API_URL}/ticket-details-by-merchantid?merchantId=${merchantId}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`,
+        { headers: getAuthHeader() }
+      );
+      if (!res.ok) throw new Error("Failed to fetch ticket details");
+      return (await res.json()).data || [];
+    },
+    enabled: !!merchantId,
+  });
+
+  // Fetch Invoice Details by Merchant and Date Filter
+  const { data: invoiceDetails, isLoading: isLoadingInvoices } = useQuery({
+    queryKey: ["invoice-details-by-merchant", merchantId, dateFilter],
+    queryFn: async () => {
+      if (!merchantId) return [];
+      const res = await fetch(
+        `${API_URL}/invoice-details-by-merchantid?merchantId=${merchantId}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`,
+        { headers: getAuthHeader() }
+      );
+      if (!res.ok) throw new Error("Failed to fetch invoice details");
+      return (await res.json()).data || [];
     },
     enabled: !!merchantId,
   });
@@ -86,21 +171,107 @@ const MerchantDashboard = () => {
     return today >= sub.start_date && today <= sub.end_date;
   };
 
+  // Dynamic Statistics
+  const ticketsSold = useMemo(() => {
+    return ticketDetails?.reduce(
+      (sum: number, det: any) => sum + (det.adult_count || 0) + (det.child_count || 0),
+      0
+    ) || 0;
+  }, [ticketDetails]);
+
+  const totalRevenue = useMemo(() => {
+    return invoiceDetails?.reduce(
+      (sum: number, det: any) => sum + (parseFloat(det.total_amount) || 0),
+      0
+    ) || 0;
+  }, [invoiceDetails]);
+
+  const attendees = useMemo(() => {
+    return ticketDetails?.reduce(
+      (sum: number, det: any) =>
+        sum + (det.scanned_sw ? ((det.adult_count || 0) + (det.child_count || 0)) : 0),
+      0
+    ) || 0;
+  }, [ticketDetails]);
+
+  // Aggregated Data for Charts
+  const ticketsByService = useMemo(() => {
+    if (!ticketDetails || !services) return [];
+    const map: Record<string, number> = {};
+    ticketDetails.forEach((det: any) => {
+      const serviceId = det.ticket?.merchant_service_id;
+      const serviceName = services.find((s: any) => s.id === serviceId)?.name || `Service #${serviceId}`;
+      const count = (det.adult_count || 0) + (det.child_count || 0);
+      map[serviceName] = (map[serviceName] || 0) + count;
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [ticketDetails, services]);
+
+  const ticketsByCategory = useMemo(() => {
+    if (!ticketDetails || !allCategories) return [];
+    const map: Record<string, number> = {};
+    ticketDetails.forEach((det: any) => {
+      const categoryId = det.ticket_category_id;
+      const categoryName = allCategories.find((c: any) => c.id === categoryId)?.name || `Category #${categoryId}`;
+      const count = (det.adult_count || 0) + (det.child_count || 0);
+      map[categoryName] = (map[categoryName] || 0) + count;
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [ticketDetails, allCategories]);
+
+  const revenueByService = useMemo(() => {
+    if (!invoiceDetails || !services) return [];
+    const map: Record<string, number> = {};
+    invoiceDetails.forEach((det: any) => {
+      const serviceId = det.invoice?.merchant_service_id;
+      const serviceName = services.find((s: any) => s.id === serviceId)?.name || `Service #${serviceId}`;
+      const amount = parseFloat(det.total_amount) || 0;
+      map[serviceName] = (map[serviceName] || 0) + amount;
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [invoiceDetails, services]);
+
+  const revenueByCategory = useMemo(() => {
+    if (!invoiceDetails || !allCategories) return [];
+    const map: Record<string, number> = {};
+    invoiceDetails.forEach((det: any) => {
+      const categoryId = det.ticket_category_id;
+      const categoryName = allCategories.find((c: any) => c.id === categoryId)?.name || `Category #${categoryId}`;
+      const amount = parseFloat(det.total_amount) || 0;
+      map[categoryName] = (map[categoryName] || 0) + amount;
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [invoiceDetails, allCategories]);
+
   const stats = [
     {
       title: "Active Services",
       value: services?.length || 0,
       icon: Calendar,
       color: "text-indigo-600",
+      bg: "bg-indigo-50",
     },
-    { title: "Tickets Sold", value: "0", icon: Ticket, color: "text-blue-600" },
+    { 
+      title: "Tickets Sold", 
+      value: isLoadingTickets ? "..." : ticketsSold, 
+      icon: Ticket, 
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
     {
       title: "Total Revenue",
-      value: "₹0.00",
+      value: isLoadingInvoices ? "..." : `₹${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: IndianRupee,
       color: "text-green-600",
+      bg: "bg-green-50",
     },
-    { title: "Attendees", value: "0", icon: Users, color: "text-purple-600" },
+    { 
+      title: "Attendees", 
+      value: isLoadingTickets ? "..." : attendees, 
+      icon: Users, 
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+    },
   ];
 
   return (
@@ -116,11 +287,29 @@ const MerchantDashboard = () => {
               </h1>
               <p className="text-slate-500">Welcome back, {user.email}</p>
             </div>
-            <Link to="/merchant-services">
-              <Button className="bg-indigo-600 hover:bg-indigo-700 gap-2 h-12 px-6 rounded-xl shadow-lg shadow-indigo-100">
-                <PlusCircle className="h-5 w-5" /> Manage Services
-              </Button>
-            </Link>
+            
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Time Range:</span>
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger className="w-[180px] bg-white border-slate-200">
+                    <SelectValue placeholder="Select Range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="5days">Last 5 Days</SelectItem>
+                    <SelectItem value="15days">Last 15 Days</SelectItem>
+                    <SelectItem value="month">Last One Month</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Link to="/merchant-services">
+                <Button className="bg-indigo-600 hover:bg-indigo-700 gap-2 h-11 px-6 rounded-xl shadow-lg shadow-indigo-100">
+                  <PlusCircle className="h-5 w-5" /> Manage Services
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Stats Grid */}
@@ -128,24 +317,21 @@ const MerchantDashboard = () => {
             {stats.map((stat, i) => (
               <Card
                 key={i}
-                className="border-none shadow-sm overflow-hidden group"
+                className="border-none shadow-sm overflow-hidden group transition-all duration-300 hover:shadow-md"
               >
                 <CardContent className="p-0">
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div
-                        className={`${stat.color} bg-slate-50 p-2 rounded-lg group-hover:scale-110 transition-transform`}
+                        className={`${stat.color} ${stat.bg} p-3 rounded-2xl group-hover:scale-110 transition-transform`}
                       >
-                        <stat.icon className="h-5 w-5" />
+                        <stat.icon className="h-6 w-6" />
                       </div>
-                      <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                        +0%
-                      </span>
                     </div>
-                    <p className="text-sm font-medium text-slate-500">
+                    <p className="text-sm font-semibold text-slate-500">
                       {stat.title}
                     </p>
-                    <h3 className="text-2xl font-bold text-slate-900 mt-1">
+                    <h3 className="text-2xl font-black text-slate-900 mt-1">
                       {stat.value}
                     </h3>
                   </div>
@@ -155,6 +341,161 @@ const MerchantDashboard = () => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          {/* Analytics Pie Charts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Tickets Sold Pie Chart */}
+            <Card className="shadow-md border-slate-200">
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
+                <div>
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Ticket className="h-5 w-5 text-indigo-500" /> Tickets Sold Breakdown
+                  </CardTitle>
+                  <CardDescription>Visual analysis of sold passes and admission tokens</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <Tabs defaultValue="service" className="w-full">
+                  <TabsList className="grid grid-cols-2 h-9 p-1 bg-slate-100 rounded-lg mb-6">
+                    <TabsTrigger value="service" className="rounded-md text-xs font-bold">By Service</TabsTrigger>
+                    <TabsTrigger value="category" className="rounded-md text-xs font-bold">By Category</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="service" className="outline-none">
+                    <div className="h-[280px] w-full flex items-center justify-center">
+                      {ticketsByService.length === 0 ? (
+                        <div className="text-sm text-slate-400 italic">No tickets sold in this period</div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={ticketsByService}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={90}
+                              paddingAngle={4}
+                              dataKey="value"
+                            >
+                              {ticketsByService.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <ChartTooltip formatter={(value) => `${value} Pass(es)`} />
+                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="category" className="outline-none">
+                    <div className="h-[280px] w-full flex items-center justify-center">
+                      {ticketsByCategory.length === 0 ? (
+                        <div className="text-sm text-slate-400 italic">No tickets sold in this period</div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={ticketsByCategory}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={90}
+                              paddingAngle={4}
+                              dataKey="value"
+                            >
+                              {ticketsByCategory.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <ChartTooltip formatter={(value) => `${value} Pass(es)`} />
+                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+
+            {/* Revenue Pie Chart */}
+            <Card className="shadow-md border-slate-200">
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
+                <div>
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <IndianRupee className="h-5 w-5 text-green-500" /> Revenue Distribution
+                  </CardTitle>
+                  <CardDescription>Income breakdown generated across business divisions</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <Tabs defaultValue="service" className="w-full">
+                  <TabsList className="grid grid-cols-2 h-9 p-1 bg-slate-100 rounded-lg mb-6">
+                    <TabsTrigger value="service" className="rounded-md text-xs font-bold">By Service</TabsTrigger>
+                    <TabsTrigger value="category" className="rounded-md text-xs font-bold">By Category</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="service" className="outline-none">
+                    <div className="h-[280px] w-full flex items-center justify-center">
+                      {revenueByService.length === 0 ? (
+                        <div className="text-sm text-slate-400 italic">No revenue recorded in this period</div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={revenueByService}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={90}
+                              paddingAngle={4}
+                              dataKey="value"
+                            >
+                              {revenueByService.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <ChartTooltip formatter={(value) => `₹${parseFloat(value as string).toFixed(2)}`} />
+                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="category" className="outline-none">
+                    <div className="h-[280px] w-full flex items-center justify-center">
+                      {revenueByCategory.length === 0 ? (
+                        <div className="text-sm text-slate-400 italic">No revenue recorded in this period</div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={revenueByCategory}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={90}
+                              paddingAngle={4}
+                              dataKey="value"
+                            >
+                              {revenueByCategory.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <ChartTooltip formatter={(value) => `₹${parseFloat(value as string).toFixed(2)}`} />
+                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
