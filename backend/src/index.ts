@@ -21,6 +21,7 @@ import merchantEnquiryRoutes from './routes/merchantEnquiryRoutes';
 import merchantServiceHolidayRoutes from './routes/merchantServiceHolidayRoutes';
 import merchantServicePictureRoutes from './routes/merchantServicePictureRoutes';
 import merchantServiceVoucherRoutes from './routes/merchantServiceVoucherRoutes';
+import merchantServiceUserRoutes from './routes/merchantServiceUserRoutes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 
@@ -68,6 +69,7 @@ app.use('/api', invoiceDetailRoutes);
 app.use('/api', merchantServiceHolidayRoutes);
 app.use('/api', merchantServicePictureRoutes);
 app.use('/api', merchantServiceVoucherRoutes);
+app.use('/api', merchantServiceUserRoutes);
 
 
 

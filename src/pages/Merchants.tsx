@@ -29,7 +29,7 @@ import {
 import { showSuccess, showError } from "@/utils/toast";
 import { 
   Building2, User, FileText, Eye, Loader2, MapPin, CreditCard,
-  Pencil, X, FolderOpen, Upload, FileCheck, Mail, Phone
+  Pencil, X, FolderOpen, Upload, FileCheck, Mail, Phone, CheckCircle2
 } from 'lucide-react';
 
 import { API_URL } from "@/config";
