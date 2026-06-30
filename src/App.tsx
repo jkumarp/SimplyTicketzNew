@@ -19,6 +19,7 @@ import AdminManageEnquiry from "./pages/AdminManageEnquiry";
 import MerchantServiceHolidays from "./pages/MerchantServiceHolidays";
 import MerchantServicePicture from "./pages/MerchantServicePicture";
 import MerchantServiceVoucher from "./pages/MerchantServiceVoucher";
+import MerchantServiceUser from "./pages/MerchantServiceUser";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
           <Route path="/merchant/holidays/:serviceId" element={<MerchantServiceHolidays />} />
           <Route path="/merchant/pictures/:serviceId" element={<MerchantServicePicture />} />
           <Route path="/merchant/vouchers/:serviceId" element={<MerchantServiceVoucher />} />
+          <Route path="/merchant/users" element={<MerchantServiceUser />} />
           <Route path="/book/:serviceId" element={<CustomerTicketBooking />} />
           <Route path="/view-site-map" element={<ViewSiteMap />} />
           <Route path="*" element={<NotFound />} />

@@ -690,12 +690,12 @@ const MerchantDashboard = () => {
                     </span>
                   </div>
                   <div className="pt-4 border-t border-indigo-500">
-                    <Link to="/merchants">
+                    <Link to="/merchant/users">
                       <Button
                         variant="secondary"
                         className="w-full bg-white text-indigo-600 hover:bg-indigo-50"
                       >
-                        <Settings className="h-4 w-4 mr-2" /> Merchant Settings
+                        <Settings className="h-4 w-4 mr-2" /> Merchant Users
                       </Button>
                     </Link>
                   </div>
