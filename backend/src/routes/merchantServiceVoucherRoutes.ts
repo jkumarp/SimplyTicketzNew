@@ -6,12 +6,43 @@ import {
   validateMerchantServiceVouchers
 } from '../controllers/merchantServiceVoucherController';
 import { authorizeRoles } from '../middleware/authMiddleware';
+import { validate } from '../middleware/validate';
+import { z } from 'zod';
 
 const router = Router();
 
+const createVoucherSchema = z.object({
+  body: z.object({
+    merchant_id: z.number().int().positive(),
+    service_id: z.number().int().positive(),
+    voucher_code: z.string().min(1, "Voucher code is required").max(10, "Voucher code cannot exceed 10 characters"),
+    percentage: z.preprocess((val) => typeof val === 'string' ? parseFloat(val) : val, z.number().min(0, "Percentage must be positive").max(100, "Percentage cannot exceed 100")),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Start date must be in YYYY-MM-DD format"),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "End date must be in YYYY-MM-DD format").nullable().optional().or(z.literal('')),
+    status_sw: z.boolean().optional(),
+    updated_by: z.number().optional()
+  })
+});
+
+const updateVoucherSchema = z.object({
+  params: z.object({
+    id: z.string()
+  }),
+  body: z.object({
+    merchant_id: z.number().int().positive().optional(),
+    service_id: z.number().int().positive().optional(),
+    voucher_code: z.string().min(1).max(10).optional(),
+    percentage: z.preprocess((val) => typeof val === 'string' ? parseFloat(val) : val, z.number().min(0).max(100)).optional(),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().or(z.literal('')),
+    status_sw: z.boolean().optional(),
+    updated_by: z.number().optional()
+  })
+});
+
 router.get('/merchant-service-vouchers', authorizeRoles(1, 2, 3, 4, 5), getMerchantServiceVouchers);
-router.post('/merchant-service-vouchers', authorizeRoles(1, 2, 3, 4, 5), createMerchantServiceVoucher);
-router.put('/merchant-service-vouchers/:id', authorizeRoles(1, 2, 3, 4, 5), updateMerchantServiceVoucher);
-router.get('/validate-merchant-service-voucher', authorizeRoles(1, 2, 3, 4, 5,6,7), validateMerchantServiceVouchers);
+router.post('/merchant-service-vouchers', authorizeRoles(1, 2, 3, 4, 5), validate(createVoucherSchema), createMerchantServiceVoucher);
+router.put('/merchant-service-vouchers/:id', authorizeRoles(1, 2, 3, 4, 5), validate(updateVoucherSchema), updateMerchantServiceVoucher);
+router.get('/validate-merchant-service-voucher', authorizeRoles(1, 2, 3, 4, 5, 6, 7), validateMerchantServiceVouchers);
 
 export default router;

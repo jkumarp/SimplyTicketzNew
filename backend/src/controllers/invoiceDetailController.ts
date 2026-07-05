@@ -1,19 +1,22 @@
-import { Request, Response } from 'express';
-import { supabase } from '../config/supabase.ts';
+import { Request, Response } from "express";
+import { supabase } from "../config/supabase.ts";
 
-export const getInvoiceDetails = async (req: Request, res: Response): Promise<void> => {
+export const getInvoiceDetails = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const { invoiceId, ticketId } = req.query;
     let query = supabase
-      .schema('transaction')
-      .from('invoice_detail')
-      .select('*');
+      .schema("transaction")
+      .from("invoice_detail")
+      .select("*");
 
     if (invoiceId) {
-      query = query.eq('invoice_id', invoiceId);
+      query = query.eq("invoice_id", invoiceId);
     }
     if (ticketId) {
-      query = query.eq('ticket_id', ticketId);
+      query = query.eq("ticket_id", ticketId);
     }
 
     const { data, error } = await query;
@@ -28,7 +31,7 @@ export const getInvoiceDetails = async (req: Request, res: Response): Promise<vo
       data,
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -37,9 +40,9 @@ export const getInvoiceDetailByMerchantId = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { merchantId, startDate, endDate } = req.query;
+    const { merchantId, startDate, endDate, userId } = req.query;
 
-    let query = supabase
+    let queryInvDetail = supabase
       .schema("transaction")
       .from("invoice_detail")
       .select(`
@@ -53,17 +56,61 @@ export const getInvoiceDetailByMerchantId = async (
       `);
 
     if (merchantId) {
-      query = query.eq("invoice.merchant_id", merchantId);
+      queryInvDetail = queryInvDetail.eq("invoice.merchant_id", merchantId);
     }
 
+    //----------------
+    // Fetch user role from database
+    const { data: dbUser } = await supabase
+      .schema("master")
+      .from("user")
+      .select("user_type_id,merchant_id,id")
+      .eq("id", userId)
+      .single();
+
+    let query = supabase.schema("master").from("merchant_service").select("*");
+    if (merchantId) {
+      query = query.eq("merchant_id", merchantId);
+    }
+
+    if ([5, 6].includes(dbUser?.user_type_id)) {
+      let queryMerSerUser = supabase
+        .schema("master")
+        .from("merchant_service_users")
+        .select("service_id");
+
+      if (merchantId) {
+        queryMerSerUser = queryMerSerUser.eq("merchant_id", merchantId);
+      }
+
+      if (userId) {
+        queryMerSerUser = queryMerSerUser.eq("user_id", userId);
+      }
+
+      const { data: dataMerchantUser, error: errorMerchantUser } =
+        await queryMerSerUser.maybeSingle();
+
+      const serviceIds = Array.isArray(dataMerchantUser?.service_id)
+        ? dataMerchantUser.service_id
+        : [dataMerchantUser?.service_id];
+
+      queryInvDetail = queryInvDetail.in(
+        "ticket.merchant_service_id",
+        serviceIds,
+      );
+    }
+    //---------------
     if (startDate) {
-      query = query.gte("invoice.transaction_date", startDate);
+      queryInvDetail = queryInvDetail.gte(
+        "invoice.transaction_date",
+        startDate,
+      );
     }
     if (endDate) {
-      query = query.lte("invoice.transaction_date", endDate);
+      queryInvDetail = queryInvDetail.lte("invoice.transaction_date", endDate);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await queryInvDetail;
 
     if (error) {
       res.status(400).json({ error: error.message });
@@ -80,7 +127,10 @@ export const getInvoiceDetailByMerchantId = async (
   }
 };
 
-export const createInvoiceDetail = async (req: Request, res: Response): Promise<void> => {
+export const createInvoiceDetail = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const {
       invoice_id,
@@ -91,12 +141,12 @@ export const createInvoiceDetail = async (req: Request, res: Response): Promise<
       adult_count,
       child_count,
       total_amount,
-      update_by
+      update_by,
     } = req.body;
 
     const { data, error } = await supabase
-      .schema('transaction')
-      .from('invoice_detail')
+      .schema("transaction")
+      .from("invoice_detail")
       .insert([{
         invoice_id,
         ticket_id,
@@ -107,7 +157,7 @@ export const createInvoiceDetail = async (req: Request, res: Response): Promise<
         child_count,
         total_amount,
         update_by,
-        update_date: new Date().toISOString()
+        update_date: new Date().toISOString(),
       }])
       .select();
 
@@ -121,6 +171,6 @@ export const createInvoiceDetail = async (req: Request, res: Response): Promise<
       data: data[0],
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };

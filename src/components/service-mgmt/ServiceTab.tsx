@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 
 import { API_URL } from "@/config";
-
+import {getMerchantId, getUserId, getUserEmail,getUserRoleId, getAuthHeader} from "@/utils/common";
 const serviceSchema = z.object({
   merchant_id: z.string().min(1, "Merchant is required"),
   name: z.string().min(1, "Name is required").max(200, "Max 200 characters"),
@@ -104,15 +104,13 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingStateId, setPendingStateId] = useState<string | null>(null);
   
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isRestricted = [4, 5, 6].includes(user.role);
+  const isRestricted = [4, 5, 6].includes(getUserRoleId());
 
   const form = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceSchema),
     defaultValues: initialDefaultValues
   });
 
-  const getAuthHeader = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}` });
 
   const { data: services, isLoading: isLoadingServices } = useQuery({
     queryKey: ['merchant-services'],

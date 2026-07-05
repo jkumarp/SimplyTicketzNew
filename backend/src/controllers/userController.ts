@@ -83,6 +83,41 @@ export const getUsers = async(req: Request, res: Response): Promise<void> => {
   }
 };
 
+export const getUsersByMerchantId = async(req: Request, res: Response): Promise<void> => {
+  try {
+    const { merchantId } = req.query;
+
+    const { data, error } = await supabase
+      .schema('master')
+      .from('user')
+      .select(`
+        id, 
+        auth_uuid,
+        user_type_id, 
+        merchant_id, 
+        user_fname, 
+        user_mname, 
+        user_lname,
+        email
+      `)
+      .eq("merchant_id",merchantId)
+      .in("user_type_id",[5,6]);
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const authData = await signUp(req.body);
@@ -144,16 +179,16 @@ export const signInUser = async (req: Request, res: Response): Promise<void> => 
     const { data: dbUser } = await supabase
       .schema('master')
       .from('user')
-      .select('user_type_id,merchant_id')
+      .select('user_type_id,merchant_id,id')
       .eq('auth_uuid', data.user.id)
       .single();
 
-    const role = dbUser?.user_type_id || 1;
+    const role = dbUser?.user_type_id || 6;
     const merchant_id = dbUser?.merchant_id || '';
-
+    const user_id = dbUser?.id ||0;
     // Create JWE (JSON Web Encryption)
     const jwe = await new jose.CompactEncrypt(
-      new TextEncoder().encode(JSON.stringify({ email: data.user.email, role,merchant_id }))
+      new TextEncoder().encode(JSON.stringify({ email: data.user.email, role,merchant_id ,user_id}))
     )
       .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
       .encrypt(SECRET);
@@ -161,7 +196,7 @@ export const signInUser = async (req: Request, res: Response): Promise<void> => 
     res.status(200).json({
       success: true,
       token: jwe,
-      user: { email: data.user.email, role,merchant_id }
+      user: { email: data.user.email, role,merchant_id, user_id }
     });
   } catch (err: any) {
     res.status(401).json({ error: err.message });

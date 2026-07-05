@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUsers, createUser, updateUser } from '../controllers/userController';
+import { getUsers, createUser, updateUser, getUsersByMerchantId } from '../controllers/userController';
 import { authorizeRoles } from '../middleware/authMiddleware';
 const router = Router();
 
@@ -13,6 +13,7 @@ const router = Router();
  *         description: A list of users.
  */
 router.get('/users', authorizeRoles(1, 2,3), getUsers);
+router.get('/merchant-users', authorizeRoles(1, 2,3,4,5), getUsersByMerchantId);
 
 /**
  * @swagger

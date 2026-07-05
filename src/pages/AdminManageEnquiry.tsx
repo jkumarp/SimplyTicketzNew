@@ -33,16 +33,13 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { API_URL } from '@/config';
-
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 const AdminManageEnquiry = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingEnquiry, setEditingEnquiry] = useState<any>(null);
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
 
-  const getAuthHeader = () => ({
-    'Authorization': `Bearer ${localStorage.getItem('token')}`
-  });
 
   const { data: enquiries, isLoading } = useQuery({
     queryKey: ['merchant-enquiries'],

@@ -7,7 +7,7 @@ import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { API_URL } from "@/config";
 import { showError, showSuccess } from "@/utils/toast";
-
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 // Core Layout & Custom Components
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -144,10 +144,6 @@ const MerchantTicketBooking = () => {
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
   const [appliedVoucher, setAppliedVoucher] = useState<string | null>(null);
-
-  const getAuthHeader = () => ({
-    Authorization: `Bearer ${localStorage.getItem("token")}`,
-  });
 
   // --- API Queries ---
   const { data: service, isLoading: isLoadingService } = useQuery<Service | undefined>({

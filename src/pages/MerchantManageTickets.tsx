@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 import { 
   Search, Ticket, Printer, User, Phone, 
   Calendar, Loader2, ArrowLeft, Filter,
@@ -22,9 +23,6 @@ const MerchantManageTickets = () => {
   const { serviceId } = useParams();
   const [searchTerm, setSearchTerm] = useState("");
 
-  const getAuthHeader = () => ({
-    'Authorization': `Bearer ${localStorage.getItem('token')}`
-  });
 
   // Fetch service details
   const { data: service } = useQuery({

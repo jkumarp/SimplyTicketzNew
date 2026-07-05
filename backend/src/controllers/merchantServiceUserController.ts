@@ -1,25 +1,28 @@
-import { Request, Response } from 'express';
-import { supabase } from '../config/supabase.ts';
+import { Request, Response } from "express";
+import { supabase } from "../config/supabase.ts";
 
 /**
  * Retrieve merchant service users with optional filtering by merchant, service, or user ID
  */
-export const getMerchantServiceUsers = async (req: Request, res: Response): Promise<void> => {
+export const getMerchantServiceUsers = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const { merchantId, serviceId, userId } = req.query;
     let query = supabase
-      .schema('master')
-      .from('merchant_service_users')
-      .select('*');
+      .schema("master")
+      .from("merchant_service_users")
+      .select("*");
 
     if (merchantId) {
-      query = query.eq('merchant_id', merchantId);
+      query = query.eq("merchant_id", merchantId);
     }
     if (serviceId) {
-      query = query.eq('service_id', serviceId);
+      query = query.eq("service_id", serviceId);
     }
     if (userId) {
-      query = query.eq('user_id', userId);
+      query = query.eq("user_id", userId);
     }
 
     const { data, error } = await query;
@@ -34,20 +37,50 @@ export const getMerchantServiceUsers = async (req: Request, res: Response): Prom
       data,
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 /**
  * Associate a user with a merchant service
  */
-export const createMerchantServiceUser = async (req: Request, res: Response): Promise<void> => {
+export const createMerchantServiceUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
-    const { merchant_id, service_id, user_id, status_sw, updated_by } = req.body;
+    const { merchant_id, service_id, user_id, status_sw, updated_by } =
+      req.body;
 
+    let query = supabase
+      .schema("master")
+      .from("merchant_service_users")
+      .select("*");
+
+    if (merchant_id) {
+      query = query.eq("merchant_id", merchant_id);
+    }
+    if (service_id) {
+      query = query.eq("service_id", service_id);
+    }
+    if (user_id) {
+      query = query.eq("user_id", user_id);
+    }
+
+    const { data: dataMerchantUser, error: errorMerchantUser } = await query;
+
+    if (errorMerchantUser) {
+      res.status(400).json({ error: errorMerchantUser.message });
+      return;
+    }
+    if(dataMerchantUser.length >0)
+    {
+      res.status(400).json({ error: "User already mapped with the Service" });
+      return;
+    }
     const { data, error } = await supabase
-      .schema('master')
-      .from('merchant_service_users')
+      .schema("master")
+      .from("merchant_service_users")
       .insert([{
         merchant_id,
         service_id,
@@ -55,7 +88,7 @@ export const createMerchantServiceUser = async (req: Request, res: Response): Pr
         status_sw: status_sw ?? true,
         updated_by,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }])
       .select();
 
@@ -69,26 +102,29 @@ export const createMerchantServiceUser = async (req: Request, res: Response): Pr
       data: data[0],
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 /**
  * Update an existing merchant service user association
  */
-export const updateMerchantServiceUser = async (req: Request, res: Response): Promise<void> => {
+export const updateMerchantServiceUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   const { id } = req.params;
   const updateData = { ...req.body };
 
   try {
     const { data, error } = await supabase
-      .schema('master')
-      .from('merchant_service_users')
+      .schema("master")
+      .from("merchant_service_users")
       .update({
         ...updateData,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', id)
+      .eq("id", id)
       .select();
 
     if (error) {
@@ -101,22 +137,25 @@ export const updateMerchantServiceUser = async (req: Request, res: Response): Pr
       data: data[0],
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 /**
  * Delete a merchant service user association
  */
-export const deleteMerchantServiceUser = async (req: Request, res: Response): Promise<void> => {
+export const deleteMerchantServiceUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   const { id } = req.params;
 
   try {
     const { error } = await supabase
-      .schema('master')
-      .from('merchant_service_users')
+      .schema("master")
+      .from("merchant_service_users")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
 
     if (error) {
       res.status(400).json({ error: error.message });
@@ -125,9 +164,9 @@ export const deleteMerchantServiceUser = async (req: Request, res: Response): Pr
 
     res.status(200).json({
       success: true,
-      message: 'Merchant service user mapping deleted successfully',
+      message: "Merchant service user mapping deleted successfully",
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };

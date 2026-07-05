@@ -10,7 +10,7 @@ import CategoryTab from '@/components/service-mgmt/CategoryTab';
 import TimeslotTab from '@/components/service-mgmt/TimeslotTab';
 import DeviceTab from '@/components/service-mgmt/DeviceTab';
 import { Briefcase, Ticket, Clock, ChevronRight, Smartphone } from 'lucide-react';
-
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 import { API_URL } from "@/config";
 
 const MerchantServices = () => {
@@ -21,7 +21,7 @@ const MerchantServices = () => {
     queryKey: ['merchant-services'],
     queryFn: async () => {
       const res = await fetch(`${API_URL}/merchant-services`, { 
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } 
+        headers: getAuthHeader()
       });
       const json = await res.json();
       return json.data;

@@ -1,7 +1,10 @@
-import { Request, Response } from 'express';
-import { supabase } from '../config/supabase.ts';
+import { Request, Response } from "express";
+import { supabase } from "../config/supabase.ts";
 
-export const createMerchantService = async (req: Request, res: Response): Promise<void> => {
+export const createMerchantService = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const {
       merchant_id,
@@ -40,12 +43,12 @@ export const createMerchantService = async (req: Request, res: Response): Promis
       end_date,
       recurring_sw,
       city,
-      advance_booking_days
+      advance_booking_days,
     } = req.body;
 
     const { data, error } = await supabase
-      .schema('master')
-      .from('merchant_service')
+      .schema("master")
+      .from("merchant_service")
       .insert([{
         merchant_id,
         name,
@@ -84,7 +87,7 @@ export const createMerchantService = async (req: Request, res: Response): Promis
         end_date,
         recurring_sw,
         city,
-        advance_booking_days
+        advance_booking_days,
       }])
       .select();
 
@@ -98,23 +101,26 @@ export const createMerchantService = async (req: Request, res: Response): Promis
       data: data[0],
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-export const updateMerchantService = async (req: Request, res: Response): Promise<void> => {
+export const updateMerchantService = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   const { id } = req.params;
   const updateData = { ...req.body };
 
   try {
     const { data, error } = await supabase
-      .schema('master')
-      .from('merchant_service')
+      .schema("master")
+      .from("merchant_service")
       .update({
         ...updateData,
-        update_date: new Date().toISOString()
+        update_date: new Date().toISOString(),
       })
-      .eq('id', id)
+      .eq("id", id)
       .select();
 
     if (error) {
@@ -127,17 +133,51 @@ export const updateMerchantService = async (req: Request, res: Response): Promis
       data: data[0],
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-export const getMerchantServices = async (req: Request, res: Response): Promise<void> => {
+export const getMerchantServices = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
-    const { merchantId } = req.query;
-    let query = supabase.schema('master').from('merchant_service').select('*');
-    
+    const { merchantId, userId } = req.query;
+
+    // Fetch user role from database
+    const { data: dbUser } = await supabase
+      .schema("master")
+      .from("user")
+      .select("user_type_id,merchant_id,id")
+      .eq("id", userId)
+      .single();
+
+    let query = supabase.schema("master").from("merchant_service").select("*");
     if (merchantId) {
-      query = query.eq('merchant_id', merchantId);
+      query = query.eq("merchant_id", merchantId);
+    }
+    if ([5, 6].includes(dbUser?.user_type_id)) {
+      let queryMerSerUser = supabase
+        .schema("master")
+        .from("merchant_service_users")
+        .select("service_id");
+
+      if (merchantId) {
+        queryMerSerUser = queryMerSerUser.eq("merchant_id", merchantId);
+      }
+
+      if (userId) {
+        queryMerSerUser = queryMerSerUser.eq("user_id", userId);
+      }
+
+      const { data: dataMerchantUser, error: errorMerchantUser } =
+        await queryMerSerUser.maybeSingle();
+
+      const serviceIds = Array.isArray(dataMerchantUser?.service_id)
+        ? dataMerchantUser.service_id
+        : [dataMerchantUser?.service_id];
+
+      query = query.in("id", serviceIds);
     }
 
     const { data, error } = await query;
@@ -152,39 +192,43 @@ export const getMerchantServices = async (req: Request, res: Response): Promise<
       data,
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-export const getMerchantServicesTaxes = async (req: Request, res: Response): Promise<void> => {
+export const getMerchantServicesTaxes = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const { merchantId } = req.query;
     const { serviceId } = req.query;
-    let query = supabase.schema('master').from('merchant_service').select('sgst,cgst,igst,state');
-    
+    let query = supabase.schema("master").from("merchant_service").select(
+      "sgst,cgst,igst,state",
+    );
+
     if (merchantId) {
-      query = query.eq('merchant_id', merchantId);
+      query = query.eq("merchant_id", merchantId);
     }
     if (merchantId) {
-      query = query.eq('id', serviceId);
+      query = query.eq("id", serviceId);
     }
 
-    const { data:serviceData, error:serviceError } = await query.single();
+    const { data: serviceData, error: serviceError } = await query.single();
 
     const serviceState = serviceData?.state ?? 0;
-    const serviceCgst= serviceData?.cgst ?? 0;
+    const serviceCgst = serviceData?.cgst ?? 0;
     const serviceSgst = serviceData?.sgst ?? 0;
     const serviceIgst = serviceData?.igst ?? 0;
 
     let taxesApplicable: any[] = [];
 
-    if(serviceState == 1) //Home State
-    {
-      taxesApplicable.push({cgst:serviceCgst,sgst:serviceSgst,igst:0});
-    }else{
-      taxesApplicable.push({cgst:0,sgst:0,igst:serviceIgst});
+    if (serviceState == 1) { //Home State
+      taxesApplicable.push({ cgst: serviceCgst, sgst: serviceSgst, igst: 0 });
+    } else {
+      taxesApplicable.push({ cgst: 0, sgst: 0, igst: serviceIgst });
     }
-    
+
     if (serviceError) {
       res.status(400).json({ error: serviceError.message });
       return;
@@ -192,51 +236,54 @@ export const getMerchantServicesTaxes = async (req: Request, res: Response): Pro
 
     res.status(200).json({
       success: true,
-      data:taxesApplicable,
+      data: taxesApplicable,
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 /**
  * getMerchantServiceBookingCal: Returns a list of valid booking dates for a service.
  * Considers working days, holidays, advance booking window, and service validity dates.
  */
-export const getMerchantServiceBookingCal = async (req: Request, res: Response): Promise<void> => {
+export const getMerchantServiceBookingCal = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const { serviceId } = req.query;
     if (!serviceId) {
-      res.status(400).json({ error: 'Service ID is required' });
+      res.status(400).json({ error: "Service ID is required" });
       return;
     }
 
     // 1. Fetch Service Details
     const { data: service, error: serviceError } = await supabase
-      .schema('master')
-      .from('merchant_service')
-      .select('*')
-      .eq('id', serviceId)
+      .schema("master")
+      .from("merchant_service")
+      .select("*")
+      .eq("id", serviceId)
       .single();
 
     if (serviceError || !service) {
-      res.status(404).json({ error: 'Service not found' });
+      res.status(404).json({ error: "Service not found" });
       return;
     }
 
     // 2. Fetch Holidays
     const { data: holidays } = await supabase
-      .schema('master')
-      .from('merchant_service_holiday')
-      .select('holiday_date')
-      .eq('merchant_service_id', serviceId)
-      .eq('status_sw', true);
+      .schema("master")
+      .from("merchant_service_holiday")
+      .select("holiday_date")
+      .eq("merchant_service_id", serviceId)
+      .eq("status_sw", true);
 
-    const holidayDates = new Set(holidays?.map(h => h.holiday_date));
+    const holidayDates = new Set(holidays?.map((h) => h.holiday_date));
 
     // 3. Calculate Date Range
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const advanceDays = service.advance_booking_days || 30; // Default to 30 if not set
     const maxDate = new Date(today);
     maxDate.setDate(today.getDate() + advanceDays);
@@ -249,13 +296,13 @@ export const getMerchantServiceBookingCal = async (req: Request, res: Response):
       service.wed_working_sw,
       service.thu_working_sw,
       service.fri_working_sw,
-      service.sat_working_sw
+      service.sat_working_sw,
     ];
 
     // 4. Iterate through dates and filter
     for (let d = new Date(today); d <= maxDate; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
-      
+      const dateStr = d.toISOString().split("T")[0];
+
       // Check Service Validity (if not recurring)
       if (!service.recurring_sw) {
         if (service.start_date && dateStr < service.start_date) continue;
@@ -273,10 +320,9 @@ export const getMerchantServiceBookingCal = async (req: Request, res: Response):
 
     res.status(200).json({
       success: true,
-      data:validDates
+      data: validDates,
     });
-
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };

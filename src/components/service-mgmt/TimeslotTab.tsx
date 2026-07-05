@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
 import { Clock, Loader2, Pencil, AlertCircle, Ticket, Hash } from 'lucide-react';
-
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 import { API_URL } from "@/config";
 
 const timeslotSchema = z.object({
@@ -51,8 +51,6 @@ interface TimeslotTabProps {
 const TimeslotTab = ({ serviceId }: TimeslotTabProps) => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  const getAuthHeader = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}` });
 
   // Fetch service to get merchant_id
   const { data: service } = useQuery({

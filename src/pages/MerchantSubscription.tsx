@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 
 import { API_URL } from "@/config";
-
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 const subscriptionSchema = z.object({
   merchant_id: z.string().min(1, "Merchant is required"),
   subscription_id: z.string().optional().or(z.literal('')),
@@ -81,11 +81,6 @@ const MerchantSubscription = () => {
       update_by: '1'
     }
   });
-
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  };
 
   // Queries
   const { data: subscriptions, isLoading: isLoadingSubs } = useQuery({

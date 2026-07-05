@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Link } from 'react-router-dom';
 import { API_URL } from "@/config";
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 import { 
   Users, Store, Ticket, TrendingUp, 
   AlertCircle, ArrowRight,
@@ -15,10 +16,6 @@ import {
 } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  };
 
   const { data: users } = useQuery({
     queryKey: ['users'],

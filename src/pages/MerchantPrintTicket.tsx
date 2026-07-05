@@ -8,6 +8,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 import {
   ArrowLeft,
   Calendar,
@@ -25,10 +26,6 @@ const MerchantPrintTicket = () => {
   const { ticketId } = useParams(); // Note: ticketId parameter is actually the Invoice ID passed here
   const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
-
-  const getAuthHeader = () => ({
-    "Authorization": `Bearer ${localStorage.getItem("token")}`,
-  });
 
   const { data: ticketData, isLoading } = useQuery({
     queryKey: ["ticket-full", ticketId],

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 import {
   Card,
   CardContent,
@@ -49,18 +50,14 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { API_URL } from "@/config";
 
-const API_URL = "http://localhost:5000/api";
 const COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#14b8a6"];
 
 const MerchantDashboard = () => {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const merchantId = user.merchant_id;
+  const merchantId = getMerchantId();
+  const userId = getUserId();
   const [dateFilter, setDateFilter] = useState("month");
-
-  const getAuthHeader = () => ({
-    "Authorization": `Bearer ${localStorage.getItem("token")}`,
-  });
 
   // Calculate Date Ranges
   const dateRange = useMemo(() => {
@@ -90,7 +87,7 @@ const MerchantDashboard = () => {
     queryFn: async () => {
       if (!merchantId) return [];
       const res = await fetch(
-        `${API_URL}/merchant-services?merchantId=${merchantId}`,
+        `${API_URL}/merchant-services?merchantId=${merchantId}&&userId=${userId}`,
         {
           headers: getAuthHeader(),
         },
@@ -137,7 +134,7 @@ const MerchantDashboard = () => {
     queryFn: async () => {
       if (!merchantId) return [];
       const res = await fetch(
-        `${API_URL}/ticket-details-by-merchantid?merchantId=${merchantId}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`,
+        `${API_URL}/ticket-details-by-merchantid?merchantId=${merchantId}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}&userId=${getUserId()}`,
         { headers: getAuthHeader() }
       );
       if (!res.ok) throw new Error("Failed to fetch ticket details");
@@ -152,7 +149,7 @@ const MerchantDashboard = () => {
     queryFn: async () => {
       if (!merchantId) return [];
       const res = await fetch(
-        `${API_URL}/invoice-details-by-merchantid?merchantId=${merchantId}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`,
+        `${API_URL}/invoice-details-by-merchantid?merchantId=${merchantId}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}&userId=${getUserId()}`,
         { headers: getAuthHeader() }
       );
       if (!res.ok) throw new Error("Failed to fetch invoice details");
@@ -285,7 +282,7 @@ const MerchantDashboard = () => {
               <h1 className="text-3xl font-bold text-slate-900">
                 Merchant Portal
               </h1>
-              <p className="text-slate-500">Welcome back, {user.email}</p>
+              <p className="text-slate-500">Welcome back, {getUserEmail()}</p>
             </div>
             
             <div className="flex flex-wrap items-center gap-4">

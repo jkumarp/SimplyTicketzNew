@@ -27,6 +27,7 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { showSuccess, showError } from "@/utils/toast";
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 import { 
   Building2, User, FileText, Eye, Loader2, MapPin, CreditCard,
   Pencil, X, FolderOpen, Upload, FileCheck, Mail, Phone, CheckCircle2
@@ -80,10 +81,6 @@ const Merchants = () => {
     partnership_agreement_docid: ''
   });
 
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  };
 
   const { data: merchants, isLoading: isLoadingMerchants } = useQuery({
     queryKey: ['merchants'],

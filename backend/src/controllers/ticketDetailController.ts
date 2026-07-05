@@ -37,9 +37,9 @@ export const getTicketDetailByMerchantId = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { merchantId, startDate, endDate } = req.query;
+    const { merchantId, startDate, endDate, userId } = req.query;
 
-    let query = supabase
+    let queryTktDetail = supabase
       .schema("transaction")
       .from("ticket_detail")
       .select(`
@@ -53,17 +53,58 @@ export const getTicketDetailByMerchantId = async (
       `);
 
     if (merchantId) {
-      query = query.eq("ticket.merchant_id", merchantId);
+      queryTktDetail = queryTktDetail.eq("ticket.merchant_id", merchantId);
     }
 
+    //---------------------------
+    // Fetch user role from database
+    const { data: dbUser } = await supabase
+      .schema("master")
+      .from("user")
+      .select("user_type_id,merchant_id,id")
+      .eq("id", userId)
+      .single();
+
+    let query = supabase.schema("master").from("merchant_service").select("*");
+    if (merchantId) {
+      query = query.eq("merchant_id", merchantId);
+    }
+
+    if ([5, 6].includes(dbUser?.user_type_id)) {
+      let queryMerSerUser = supabase
+        .schema("master")
+        .from("merchant_service_users")
+        .select("service_id");
+
+      if (merchantId) {
+        queryMerSerUser = queryMerSerUser.eq("merchant_id", merchantId);
+      }
+
+      if (userId) {
+        queryMerSerUser = queryMerSerUser.eq("user_id", userId);
+      }
+
+      const { data: dataMerchantUser, error: errorMerchantUser } =
+        await queryMerSerUser.maybeSingle();
+
+      const serviceIds = Array.isArray(dataMerchantUser?.service_id)
+        ? dataMerchantUser.service_id
+        : [dataMerchantUser?.service_id];
+
+      queryTktDetail = queryTktDetail.in(
+        "ticket.merchant_service_id",
+        serviceIds,
+      );
+    }
+    //----------------------
     if (startDate) {
-      query = query.gte("ticket.booking_date", startDate);
+      queryTktDetail = queryTktDetail.gte("ticket.booking_date", startDate);
     }
     if (endDate) {
-      query = query.lte("ticket.booking_date", endDate);
+      queryTktDetail = queryTktDetail.lte("ticket.booking_date", endDate);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await queryTktDetail;
 
     if (error) {
       res.status(400).json({ error: error.message });

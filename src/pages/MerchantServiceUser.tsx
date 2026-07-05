@@ -10,6 +10,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 import {
   Card,
   CardContent,
@@ -45,14 +46,14 @@ import {
 import { showError, showSuccess } from "@/utils/toast";
 import {
   ArrowLeft,
+  Briefcase,
+  CheckCircle2,
   Loader2,
   Pencil,
   Plus,
+  ShieldCheck,
   Trash2,
   Users,
-  Briefcase,
-  ShieldCheck,
-  CheckCircle2,
 } from "lucide-react";
 import { API_URL } from "@/config";
 
@@ -69,21 +70,20 @@ const MerchantServiceUser = () => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const loggedInUser = JSON.parse(localStorage.getItem("user") || "{}");
-  const merchantId = loggedInUser.merchant_id;
-
-  const getAuthHeader = () => ({
-    "Authorization": `Bearer ${localStorage.getItem("token")}`,
-  });
+  const loggedInUser = getUserId();
+  const merchantId = getMerchantId();
 
   // Fetch services for this merchant
   const { data: services, isLoading: isLoadingServices } = useQuery({
     queryKey: ["merchant-services", merchantId],
     queryFn: async () => {
       if (!merchantId) return [];
-      const res = await fetch(`${API_URL}/merchant-services?merchantId=${merchantId}`, {
-        headers: getAuthHeader(),
-      });
+      const res = await fetch(
+        `${API_URL}/merchant-services?merchantId=${merchantId}`,
+        {
+          headers: getAuthHeader(),
+        },
+      );
       if (!res.ok) throw new Error("Failed to fetch services");
       return (await res.json()).data;
     },
@@ -94,9 +94,12 @@ const MerchantServiceUser = () => {
   const { data: users, isLoading: isLoadingUsers } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/users`, {
-        headers: getAuthHeader(),
-      });
+      const res = await fetch(
+        `${API_URL}/merchant-users?merchantId=${merchantId}`,
+        {
+          headers: getAuthHeader(),
+        },
+      );
       if (!res.ok) throw new Error("Failed to fetch users");
       return (await res.json()).data;
     },
@@ -105,7 +108,9 @@ const MerchantServiceUser = () => {
   // Filter users that belong to this merchant
   const merchantUsers = React.useMemo(() => {
     if (!users || !merchantId) return [];
-    return users.filter((u: any) => u.merchant_id?.toString() === merchantId.toString());
+    return users.filter((u: any) =>
+      u.merchant_id?.toString() === merchantId.toString()
+    );
   }, [users, merchantId]);
 
   // Fetch service user mappings for this merchant
@@ -113,9 +118,12 @@ const MerchantServiceUser = () => {
     queryKey: ["merchant-service-users", merchantId],
     queryFn: async () => {
       if (!merchantId) return [];
-      const res = await fetch(`${API_URL}/merchant-service-users?merchantId=${merchantId}`, {
-        headers: getAuthHeader(),
-      });
+      const res = await fetch(
+        `${API_URL}/merchant-service-users?merchantId=${merchantId}`,
+        {
+          headers: getAuthHeader(),
+        },
+      );
       if (!res.ok) throw new Error("Failed to fetch service mappings");
       return (await res.json()).data;
     },
@@ -156,8 +164,17 @@ const MerchantServiceUser = () => {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Operation failed");
-      return res.json();
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          result.message ||
+            result.error ||
+            result.errors?.[0]?.message ||
+            "Operation failed",
+        );
+      }
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -269,7 +286,10 @@ const MerchantServiceUser = () => {
                           <FormLabel className="flex items-center gap-1.5">
                             <Briefcase className="h-3.5 w-3.5" /> Service *
                           </FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Service" />
@@ -277,7 +297,10 @@ const MerchantServiceUser = () => {
                             </FormControl>
                             <SelectContent>
                               {services?.map((srv: any) => (
-                                <SelectItem key={srv.id} value={srv.id.toString()}>
+                                <SelectItem
+                                  key={srv.id}
+                                  value={srv.id.toString()}
+                                >
                                   {srv.name}
                                 </SelectItem>
                               ))}
@@ -296,7 +319,10 @@ const MerchantServiceUser = () => {
                           <FormLabel className="flex items-center gap-1.5">
                             <Users className="h-3.5 w-3.5" /> Staff User *
                           </FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select User" />
@@ -304,8 +330,12 @@ const MerchantServiceUser = () => {
                             </FormControl>
                             <SelectContent>
                               {merchantUsers?.map((usr: any) => (
-                                <SelectItem key={usr.id} value={usr.id.toString()}>
-                                  {usr.user_fname} {usr.user_lname} ({usr.email})
+                                <SelectItem
+                                  key={usr.id}
+                                  value={usr.id.toString()}
+                                >
+                                  {usr.user_fname} {usr.user_lname}{" "}
+                                  ({usr.email})
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -380,83 +410,86 @@ const MerchantServiceUser = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {mappings?.length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={4}
-                            className="text-center py-12 text-slate-400 italic"
-                          >
-                            No staff user associations configured yet
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        mappings?.map((map: any) => {
-                          const associatedUser = merchantUsers.find(
-                            (u: any) => u.id === map.user_id
-                          );
-                          const associatedService = services?.find(
-                            (s: any) => s.id === map.service_id
-                          );
-
-                          return (
-                            <TableRow
-                              key={map.id}
-                              className="hover:bg-slate-50/50 transition-colors"
+                      {mappings?.length === 0
+                        ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={4}
+                              className="text-center py-12 text-slate-400 italic"
                             >
-                              <TableCell className="font-bold text-slate-900">
-                                {associatedUser
-                                  ? `${associatedUser.user_fname} ${associatedUser.user_lname}`
-                                  : `User #${map.user_id}`}
-                                <p className="text-xs text-slate-400 font-normal truncate max-w-[180px]">
-                                  {associatedUser?.email || "No email"}
-                                </p>
-                              </TableCell>
-                              <TableCell className="font-semibold text-slate-700">
-                                {associatedService?.name || `Service #${map.service_id}`}
-                              </TableCell>
-                              <TableCell>
-                                <span
-                                  className={`px-2 py-1 rounded-full text-[10px] font-bold ${
-                                    map.status_sw
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-slate-100 text-slate-600"
-                                  }`}
-                                >
-                                  {map.status_sw ? "ACTIVE" : "INACTIVE"}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-indigo-600 hover:bg-indigo-50"
-                                    onClick={() => handleEdit(map)}
+                              No staff user associations configured yet
+                            </TableCell>
+                          </TableRow>
+                        )
+                        : (
+                          mappings?.map((map: any) => {
+                            const associatedUser = merchantUsers.find(
+                              (u: any) => u.id === map.user_id,
+                            );
+                            const associatedService = services?.find(
+                              (s: any) => s.id === map.service_id,
+                            );
+
+                            return (
+                              <TableRow
+                                key={map.id}
+                                className="hover:bg-slate-50/50 transition-colors"
+                              >
+                                <TableCell className="font-bold text-slate-900">
+                                  {associatedUser
+                                    ? `${associatedUser.user_fname} ${associatedUser.user_lname}`
+                                    : `User #${map.user_id}`}
+                                  <p className="text-xs text-slate-400 font-normal truncate max-w-[180px]">
+                                    {associatedUser?.email || "No email"}
+                                  </p>
+                                </TableCell>
+                                <TableCell className="font-semibold text-slate-700">
+                                  {associatedService?.name ||
+                                    `Service #${map.service_id}`}
+                                </TableCell>
+                                <TableCell>
+                                  <span
+                                    className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                                      map.status_sw
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-slate-100 text-slate-600"
+                                    }`}
                                   >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-red-500 hover:bg-red-50"
-                                    onClick={() => {
-                                      if (
-                                        confirm(
-                                          "Are you sure you want to delete this staff mapping?"
-                                        )
-                                      ) {
-                                        deleteMutation.mutate(map.id);
-                                      }
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
+                                    {map.status_sw ? "ACTIVE" : "INACTIVE"}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-indigo-600 hover:bg-indigo-50"
+                                      onClick={() => handleEdit(map)}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-red-500 hover:bg-red-50"
+                                      onClick={() => {
+                                        if (
+                                          confirm(
+                                            "Are you sure you want to delete this staff mapping?",
+                                          )
+                                        ) {
+                                          deleteMutation.mutate(map.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
                     </TableBody>
                   </Table>
                 </div>

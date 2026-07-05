@@ -9,7 +9,7 @@ import Footer from "@/components/Footer";
 import SiteMapDialog from "@/components/SiteMapDialog";
 import { API_URL } from "@/config";
 import { ModalPictureShow } from "@/components/ModelPictureShow";
-
+import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 import {
   Card,
   CardContent,
@@ -92,10 +92,6 @@ const CustomerTicketBooking = () => {
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
   const [appliedVoucher, setAppliedVoucher] = useState<string | null>(null);
-
-  const getAuthHeader = () => ({
-    "Authorization": `Bearer ${localStorage.getItem("token")}`,
-  });
 
   // Queries
   const { data: service, isLoading: isLoadingService } = useQuery({
