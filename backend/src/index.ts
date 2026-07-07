@@ -24,7 +24,7 @@ import merchantServiceVoucherRoutes from './routes/merchantServiceVoucherRoutes'
 import merchantServiceUserRoutes from './routes/merchantServiceUserRoutes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
-
+import {errorHandler} from './middleware/errorHandler';
 dotenv.config();
 
 const app = express();
@@ -71,7 +71,7 @@ app.use('/api', merchantServicePictureRoutes);
 app.use('/api', merchantServiceVoucherRoutes);
 app.use('/api', merchantServiceUserRoutes);
 
-
+app.use(errorHandler);
 
 
 app.listen(PORT, () => {

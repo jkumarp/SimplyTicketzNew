@@ -66,6 +66,33 @@ export const getMerchants = async (
   }
 };
 
+const keyCache = new Map<number, {
+  publicKey: string;
+  privateKey: string;
+}>();
+
+export async function getKeys(merchantId: number) {
+  if (keyCache.has(merchantId)) {
+    return keyCache.get(merchantId)!;
+  }
+
+  const { data, error } = await supabase
+    .schema("master")
+    .from("encryption_keys")
+    .select("public_key, private_key")
+    .eq("id", merchantId)
+    .single();
+
+  if (error) throw error;
+
+  keyCache.set(merchantId, {
+    publicKey: data.public_key,
+    privateKey: data.private_key,
+  });
+
+  return keyCache.get(merchantId)!;
+}
+
 export const setMerchants = async (
   req: Request,
   res: Response,
@@ -109,7 +136,7 @@ export const setMerchants = async (
     aoa_docid,
     trading_certificate_docid,
     director_information_docid,
-    partnership_agreement_docid
+    partnership_agreement_docid,
   } = req.body;
 
   try {
