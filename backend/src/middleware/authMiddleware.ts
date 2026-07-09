@@ -18,7 +18,8 @@ export const authorizeRoles = (...roles: number[]) => {
       const token = authHeader.split(' ')[1];
       const { plaintext } = await jose.compactDecrypt(token, SECRET);
       const payload = JSON.parse(new TextDecoder().decode(plaintext));
-      
+      global.userid = payload.user_id;
+
       if (!roles.includes(payload.role)) {
         res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
         return;

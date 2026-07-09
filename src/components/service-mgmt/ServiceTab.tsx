@@ -31,11 +31,12 @@ import {
   Briefcase, Loader2, Building2, MapPin, Clock, 
   CreditCard, Pencil, X, QrCode, Palette, Image as ImageIcon,
   CalendarDays, Globe, Link as LinkIcon, ShieldAlert, Percent, Calendar, RefreshCcw,
-  MapPinned, History
+  MapPinned, History, KeyRound
 } from 'lucide-react';
 
 import { API_URL } from "@/config";
-import {getMerchantId, getUserId, getUserEmail,getUserRoleId, getAuthHeader} from "@/utils/common";
+import { getMerchantId, getUserId, getUserEmail, getUserRoleId, getAuthHeader } from "@/utils/common";
+
 const serviceSchema = z.object({
   merchant_id: z.string().min(1, "Merchant is required"),
   name: z.string().min(1, "Name is required").max(200, "Max 200 characters"),
@@ -110,7 +111,6 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
     resolver: zodResolver(serviceSchema),
     defaultValues: initialDefaultValues
   });
-
 
   const { data: services, isLoading: isLoadingServices } = useQuery({
     queryKey: ['merchant-services'],
@@ -192,6 +192,28 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
       form.reset(initialDefaultValues);
     },
     onError: (error: any) => showError(error.message)
+  });
+
+  // Cryptographic Key pair generation mutation trigger
+  const regenerateKeyMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`${API_URL}/service-encryption/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeader()
+      });
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.error || 'Failed to regenerate encryption key');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchant-services'] });
+      showSuccess('Encryption RSA key pair successfully regenerated for this service!');
+    },
+    onError: (err: any) => {
+      showError(err.message || 'Key regeneration error triggered.');
+    }
   });
 
   const formatTimeForInput = (time: string | null) => {
@@ -568,6 +590,24 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
                         </span>
                       </TableCell>
                       <TableCell className="text-right flex justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          title="Regenerate Encryption Key"
+                          disabled={regenerateKeyMutation.isPending}
+                          onClick={() => {
+                            if (confirm("Are you absolutely sure you want to regenerate the secure cryptographic RSA key pair for this service? Any existing offline QR verification systems configured with old keys will need to sync updated public parameters!")) {
+                              regenerateKeyMutation.mutate(service.id);
+                            }
+                          }}
+                        >
+                          {regenerateKeyMutation.isPending && regenerateKeyMutation.variables === service.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <KeyRound className="h-4 w-4" />
+                          )}
+                        </Button>
                         <Button variant="outline" size="sm" className="h-8" onClick={() => onServiceSelect(service.id.toString())}>Select</Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => handleEdit(service)}><Pencil className="h-4 w-4" /></Button>
                       </TableCell>

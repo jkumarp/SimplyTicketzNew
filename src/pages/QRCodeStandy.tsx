@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -10,6 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAuthHeader } from "@/utils/common";
 import { API_URL } from "@/config";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { showSuccess, showError } from "@/utils/toast";
 import {
   ArrowLeft,
   Printer,
@@ -19,12 +30,19 @@ import {
   CheckCircle,
   MapPin,
   Loader2,
+  Pencil,
 } from "lucide-react";
+
+const DEFAULT_STANDY_TEXT = "Unlock instant admissions right from your smartphone. Secure your access passes in under 60 seconds with no paper clutter!";
 
 const QRCodeStandy = () => {
   const { serviceId } = useParams<{ serviceId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const standyRef = useRef<HTMLDivElement>(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState("");
 
   // Fetch service details for branding
   const { data: service, isLoading } = useQuery({
@@ -39,8 +57,42 @@ const QRCodeStandy = () => {
     enabled: !!serviceId,
   });
 
+  // Mutation to update qr_standy_text
+  const updateMutation = useMutation({
+    mutationFn: async (newText: string) => {
+      const res = await fetch(`${API_URL}/merchant-services/${serviceId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({
+          qr_standy_text: newText,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update standy subtext");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["merchant-service-standy", serviceId] });
+      showSuccess("Standy subtext updated successfully!");
+      setIsEditing(false);
+    },
+    onError: (err: any) => showError(err.message),
+  });
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const openEditDialog = () => {
+    setEditText(service?.qr_standy_text || DEFAULT_STANDY_TEXT);
+    setIsEditing(true);
+  };
+
+  const handleSaveText = () => {
+    updateMutation.mutate(editText.trim());
   };
 
   if (isLoading) {
@@ -57,6 +109,7 @@ const QRCodeStandy = () => {
 
   // Generate Customer Booking URL
   const bookingUrl = `${window.location.protocol}//${window.location.host}/book/${serviceId}`;
+  const standyTextToShow = service?.qr_standy_text || DEFAULT_STANDY_TEXT;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col print:bg-white print:p-0">
@@ -72,12 +125,21 @@ const QRCodeStandy = () => {
           >
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </Button>
-          <Button
-            onClick={handlePrint}
-            className="bg-indigo-600 hover:bg-indigo-700 gap-2 h-12 px-6 rounded-xl shadow-lg shadow-indigo-100 font-bold"
-          >
-            <Printer className="h-5 w-5" /> Print Standy Banner
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={openEditDialog}
+              className="gap-2 h-12 px-5 rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 font-bold"
+            >
+              <Pencil className="h-4 w-4" /> Edit Statement
+            </Button>
+            <Button
+              onClick={handlePrint}
+              className="bg-indigo-600 hover:bg-indigo-700 gap-2 h-12 px-6 rounded-xl shadow-lg shadow-indigo-100 font-bold"
+            >
+              <Printer className="h-5 w-5" /> Print Standy Banner
+            </Button>
+          </div>
         </div>
 
         {/* Printable Standy poster container */}
@@ -119,7 +181,7 @@ const QRCodeStandy = () => {
                 Scan, Book & Enjoy! 🚀
               </h2>
               <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-                Unlock instant admissions right from your smartphone. Secure your access passes in under 60 seconds with no paper clutter!
+                {standyTextToShow}
               </p>
             </div>
 
@@ -166,6 +228,53 @@ const QRCodeStandy = () => {
           </div>
         </div>
       </main>
+
+      {/* Edit Statement Dialog */}
+      <Dialog open={isEditing} onOpenChange={setIsEditing}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-indigo-600" /> Edit Standy Statement
+            </DialogTitle>
+            <DialogDescription>
+              Modify the subtext on your printable standy poster. Keep it clear, concise, and catchy.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="standy-text">Catchy Subtext Statement</Label>
+              <Textarea
+                id="standy-text"
+                rows={4}
+                maxLength={200}
+                placeholder="Write your catchy statement here..."
+                className="rounded-xl focus-visible:ring-indigo-500"
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+              />
+              <div className="text-right text-[10px] text-slate-400">
+                {editText.length} / 200 characters max
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditing(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700 font-bold"
+              onClick={handleSaveText}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Save & Apply"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
 

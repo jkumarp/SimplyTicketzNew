@@ -1,13 +1,13 @@
 import crypto from "crypto";
 import {
-    getKeys
-} from "../controllers/merchantController";
+    getEncryptionKeys
+} from "../controllers/merchantServicesController";
 
 export async function encryptPayload(
-    merchantId: number,
+    serviceId: number,
     text: string,
 ) {
-    const keys = await getKeys(merchantId);
+    const keys = await getEncryptionKeys(serviceId);
 
     const encrypted = crypto.publicEncrypt(
         {
@@ -21,10 +21,10 @@ export async function encryptPayload(
 }
 
 export async function decryptPayload(
-    merchantId: number,
+    serviceId: number,
     encrypted: string,
 ) {
-    const keys = await getKeys(merchantId);
+    const keys = await getEncryptionKeys(serviceId);
 
     const decrypted = crypto.privateDecrypt(
         {
@@ -37,5 +37,21 @@ export async function decryptPayload(
     return decrypted.toString("utf8");
 }
 
+export function generateKeyPairSync(){
+const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: {
+        type: "spki",
+        format: "pem",
+    },
+    privateKeyEncoding: {
+        type: "pkcs8",
+        format: "pem",
+    },
+});
 
-
+return {
+    publicKey,
+    privateKey,
+};
+}

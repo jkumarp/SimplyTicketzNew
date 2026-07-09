@@ -1,5 +1,9 @@
 import { Request, Response } from "express";
 import { supabase } from "../config/supabase.ts";
+import {
+    generateKeyPairSync
+} from "../services/cryptoService";
+
 
 export const createMerchantService = async (
   req: Request,
@@ -105,6 +109,53 @@ export const createMerchantService = async (
   }
 };
 
+const keyCache = new Map<number, {
+  publicKey: string;
+  privateKey: string;
+}>();
+
+export async function updateEncryptionKey(serviceId: number) {
+  const { publicKey, privateKey } =  generateKeyPairSync();
+
+  const { data, error } = await supabase
+    .schema("master")
+    .from("merchant_service")
+    .update({
+      public_key: publicKey,
+      private_key: privateKey,
+    })
+    .eq("id", serviceId)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+export async function getEncryptionKeys(serviceId: number) {
+  if (keyCache.has(serviceId)) {
+    return keyCache.get(serviceId)!;
+  }
+
+  const { data, error } = await supabase
+    .schema("master")
+    .from("merchant_service")
+    .select("public_key, private_key")
+    .eq("id", serviceId)
+    .single();
+
+  if (error) throw error;
+
+  keyCache.set(serviceId, {
+    publicKey: data.public_key,
+    privateKey: data.private_key,
+  });
+
+  return keyCache.get(serviceId)!;
+}
+
 export const updateMerchantService = async (
   req: Request,
   res: Response,
@@ -142,8 +193,8 @@ export const getMerchantServices = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { merchantId, userId } = req.query;
-
+    const { merchantId } = req.query;
+    const userId = global.userid;
     // Fetch user role from database
     const { data: dbUser } = await supabase
       .schema("master")
