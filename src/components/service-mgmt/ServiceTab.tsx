@@ -33,8 +33,11 @@ import {
   CalendarDays, Globe, Link as LinkIcon, ShieldAlert, Percent, Calendar, RefreshCcw,
   MapPinned, History
 } from 'lucide-react';
+import { API_URL } from "@/config";
+const getAuthHeader = () => ({
+  "Authorization": `Bearer ${localStorage.getItem("token")}`,
+});
 
-const API_URL = 'http://localhost:5000/api';
 
 const serviceSchema = z.object({
   merchant_id: z.string().min(1, "Merchant is required"),
@@ -111,8 +114,6 @@ const ServiceTab = ({ onServiceSelect, selectedServiceId }: ServiceTabProps) => 
     resolver: zodResolver(serviceSchema),
     defaultValues: initialDefaultValues
   });
-
-  const getAuthHeader = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}` });
 
   const { data: services, isLoading: isLoadingServices } = useQuery({
     queryKey: ['merchant-services'],

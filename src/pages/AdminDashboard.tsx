@@ -13,7 +13,7 @@ import {
   BarChart3, Activity, MessageSquare
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const AdminDashboard = () => {
   const getAuthHeader = () => {

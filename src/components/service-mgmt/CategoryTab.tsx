@@ -29,8 +29,10 @@ import {
 } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
 import { Ticket, Loader2, IndianRupee, Pencil, X, AlertCircle, Info, Users } from 'lucide-react';
-
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
+const getAuthHeader = () => ({
+  "Authorization": `Bearer ${localStorage.getItem("token")}`,
+});
 
 const categorySchema = z.object({
   merchant_service_id: z.string().min(1, "Service is required"),
@@ -72,8 +74,7 @@ const CategoryTab = ({ serviceId }: CategoryTabProps) => {
     if (serviceId) form.setValue('merchant_service_id', serviceId);
   }, [serviceId, form]);
 
-  const getAuthHeader = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}` });
-
+  
   // Fetch service to get merchant_id for timeslots
   const { data: service } = useQuery({
     queryKey: ['merchant-service', serviceId],

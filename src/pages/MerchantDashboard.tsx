@@ -28,7 +28,7 @@ import {
   CalendarX,
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api";
+import { API_URL } from "@/config";
 
 const MerchantDashboard = () => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");

@@ -11,7 +11,7 @@ import TimeslotTab from '@/components/service-mgmt/TimeslotTab';
 import DeviceTab from '@/components/service-mgmt/DeviceTab';
 import { Briefcase, Ticket, Clock, ChevronRight, Smartphone } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const MerchantServices = () => {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);

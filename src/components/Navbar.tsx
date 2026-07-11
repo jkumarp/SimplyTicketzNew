@@ -8,8 +8,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { showSuccess, showError } from "@/utils/toast";
+import { API_URL } from "@/config";
 
-const API_URL = 'http://localhost:5000/api';
 
 const Navbar = () => {
   const [user, setUser] = useState<any>(null);

@@ -20,7 +20,7 @@ import {
 import { showSuccess, showError } from "@/utils/toast";
 import { UserPlus, Loader2, Mail, Phone, User as UserIcon, Lock, Building2, ShieldCheck, Pencil, X } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
 
 const Users = () => {
   const queryClient = useQueryClient();

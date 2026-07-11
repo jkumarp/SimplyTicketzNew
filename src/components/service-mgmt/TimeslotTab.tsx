@@ -29,7 +29,10 @@ import {
 import { showSuccess, showError } from "@/utils/toast";
 import { Clock, Loader2, Pencil, AlertCircle, Ticket, Hash } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from "@/config";
+const getAuthHeader = () => ({
+  "Authorization": `Bearer ${localStorage.getItem("token")}`,
+});
 
 const timeslotSchema = z.object({
   merchant_id: z.string().min(1),
@@ -51,8 +54,6 @@ interface TimeslotTabProps {
 const TimeslotTab = ({ serviceId }: TimeslotTabProps) => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  const getAuthHeader = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}` });
 
   // Fetch service to get merchant_id
   const { data: service } = useQuery({
