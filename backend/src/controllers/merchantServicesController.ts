@@ -114,7 +114,11 @@ const keyCache = new Map<number, {
   privateKey: string;
 }>();
 
-export async function updateEncryptionKey(serviceId: number) {
+export const updateEncryptionKey = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const { id } = req.params;
   const { publicKey, privateKey } =  generateKeyPairSync();
 
   const { data, error } = await supabase
@@ -124,15 +128,17 @@ export async function updateEncryptionKey(serviceId: number) {
       public_key: publicKey,
       private_key: privateKey,
     })
-    .eq("id", serviceId)
+    .eq("id", id)
     .select()
     .single();
 
   if (error) {
-    throw error;
+    res.status(500).json({ error: "Internal Server Error" });
   }
 
-  return data;
+  res.status(200).json({
+    success: true,
+  });
 }
 export async function getEncryptionKeys(serviceId: number) {
   if (keyCache.has(serviceId)) {
