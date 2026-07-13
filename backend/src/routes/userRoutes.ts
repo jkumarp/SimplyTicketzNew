@@ -1,6 +1,13 @@
-import { Router } from 'express';
-import { getUsers, createUser, updateUser, getUsersByMerchantId } from '../controllers/userController';
-import { authorizeRoles } from '../middleware/authMiddleware';
+import { Router } from "express";
+import {
+    createUser,
+    getUsers,
+    getUsersByMerchantId,
+    updateUser,
+} from "../controllers/userController";
+import { authorizeRoles } from "../middleware/authMiddleware";
+
+import { apiRateLimiter } from "../middleware/rateLimitMiddleware";
 const router = Router();
 
 /**
@@ -12,8 +19,18 @@ const router = Router();
  *       200:
  *         description: A list of users.
  */
-router.get('/users', authorizeRoles(1, 2,3), getUsers);
-router.get('/merchant-users', authorizeRoles(1, 2,3,4,5), getUsersByMerchantId);
+router.get(
+    "/users",
+    authorizeRoles(1, 2, 3),
+    apiRateLimiter(),
+    getUsers,
+);
+router.get(
+    "/merchant-users",
+    authorizeRoles(1, 2, 3, 4, 5),
+    apiRateLimiter(),
+    getUsersByMerchantId,
+);
 
 /**
  * @swagger
@@ -21,7 +38,13 @@ router.get('/merchant-users', authorizeRoles(1, 2,3,4,5), getUsersByMerchantId);
  *   post:
  *     summary: Create a new user
  */
-router.post('/users', authorizeRoles(1, 2), createUser);
+router.post(
+    "/users",
+    authorizeRoles(1, 2),
+    apiRateLimiter(),
+    apiRateLimiter(),
+    createUser,
+);
 
 /**
  * @swagger
@@ -29,6 +52,12 @@ router.post('/users', authorizeRoles(1, 2), createUser);
  *   put:
  *     summary: Update an existing user
  */
-router.put('/users/:id', authorizeRoles(1, 2), updateUser);
+router.put(
+    "/users/:id",
+    authorizeRoles(1, 2),
+    apiRateLimiter(),
+    apiRateLimiter(),
+    updateUser,
+);
 
 export default router;

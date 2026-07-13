@@ -25,6 +25,9 @@ import merchantServiceUserRoutes from './routes/merchantServiceUserRoutes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import {errorHandler} from './middleware/errorHandler';
+import { redisService } from "./config/redisClient";
+// Public Auth Routes
+import { signInUser, signOutUser, generateGuestToken } from './controllers/userController';
 dotenv.config();
 
 const app = express();
@@ -37,16 +40,16 @@ app.use(cors({
 }));
 
 app.use(express.json());
+// Initialize our Redis connection pools before starting the web server
 
 // Serve Swagger Docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Public Auth Routes
-import { signInUser, signOutUser, generateGuestToken } from './controllers/userController';
+
 app.post('/api/login', signInUser);
 app.post('/api/logout', signOutUser);
 app.post('/api/guestLogin', generateGuestToken);
-
+redisService.connect().then(() => {
 // Public/Semi-public routes
 app.use('/api', merchantEnquiryRoutes);
 app.use('/api', countryRoutes);
@@ -71,9 +74,11 @@ app.use('/api', merchantServicePictureRoutes);
 app.use('/api', merchantServiceVoucherRoutes);
 app.use('/api', merchantServiceUserRoutes);
 
+app.listen(3000, () => {
+  console.log('Redis Server running on port 3000');
+});
+});
 app.use(errorHandler);
-
-
 app.listen(PORT, () => {
   console.log(`Server running smoothly http://localhost:${PORT}/`);
   console.log(`Docs available on http://localhost:${PORT}/api-docs`);

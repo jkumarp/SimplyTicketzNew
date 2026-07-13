@@ -8,6 +8,7 @@ import {
 import { authorizeRoles } from '../middleware/authMiddleware';
 import { validate } from '../middleware/validate';
 import { z } from 'zod';
+import { apiRateLimiter } from "../middleware/rateLimitMiddleware";
 
 const router = Router();
 
@@ -40,9 +41,9 @@ const updateVoucherSchema = z.object({
   })
 });
 
-router.get('/merchant-service-vouchers', authorizeRoles(1, 2, 3, 4, 5), getMerchantServiceVouchers);
-router.post('/merchant-service-vouchers', authorizeRoles(1, 2, 3, 4, 5), validate(createVoucherSchema), createMerchantServiceVoucher);
-router.put('/merchant-service-vouchers/:id', authorizeRoles(1, 2, 3, 4, 5), validate(updateVoucherSchema), updateMerchantServiceVoucher);
-router.get('/validate-merchant-service-voucher', authorizeRoles(1, 2, 3, 4, 5, 6, 7), validateMerchantServiceVouchers);
+router.get('/merchant-service-vouchers', authorizeRoles(1, 2, 3, 4, 5),apiRateLimiter(), getMerchantServiceVouchers);
+router.post('/merchant-service-vouchers', authorizeRoles(1, 2, 3, 4, 5), validate(createVoucherSchema),apiRateLimiter(), createMerchantServiceVoucher);
+router.put('/merchant-service-vouchers/:id', authorizeRoles(1, 2, 3, 4, 5), validate(updateVoucherSchema),apiRateLimiter(), updateMerchantServiceVoucher);
+router.get('/validate-merchant-service-voucher', authorizeRoles(1, 2, 3, 4, 5, 6, 7),apiRateLimiter(), validateMerchantServiceVouchers);
 
 export default router;
