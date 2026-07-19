@@ -9,6 +9,7 @@ const jweSecret = new TextEncoder().encode(
 const jwtSecret = new TextEncoder().encode(
   process.env.JWT_SECRET,
 );
+const exp = process.env.SESSION_EXPIRY??"5m";
 /**
  * Internal helper to handle Supabase Auth sign up
  */
@@ -212,13 +213,14 @@ export const signInUser = async (
     const merchant_id = dbUser?.merchant_id || "";
     const user_id = dbUser?.id || 0;
     const payLoad = { email: data.user.email, role, merchant_id, user_id };
+    
 
     const jwt = await new jose.SignJWT(payLoad)
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setIssuer("simplyticketz")
       .setAudience("merchant-portal")
-      .setExpirationTime("5m")
+      .setExpirationTime(exp)
       .sign(jwtSecret);
     // Create JWE (JSON Web Encryption)
     const jwe = await new jose.CompactEncrypt(
