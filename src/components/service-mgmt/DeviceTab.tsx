@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
 import { Smartphone, Loader2, Pencil, X, AlertCircle, Hash, Phone, ShieldCheck } from 'lucide-react';
-import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
+import {getAuthHeader} from "@/utils/common";
 import { API_URL } from "@/config";
 
 const deviceSchema = z.object({

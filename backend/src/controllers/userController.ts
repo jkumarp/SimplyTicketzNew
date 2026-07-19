@@ -1,10 +1,14 @@
-import { Request, Response } from 'express';
-import { supabase } from '../config/supabase.ts';
-import * as jose from 'jose';
-
+import { Request, Response } from "express";
+import { supabase } from "../config/supabase.ts";
+import * as jose from "jose";
+import { encryptText } from "../services/eciesService";
 // In a real app, this should be a 32-byte key from environment variables
-const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || '12345678123456781234567812345678');
-
+const jweSecret = new TextEncoder().encode(
+  process.env.JWE_SECRET,
+);
+const jwtSecret = new TextEncoder().encode(
+  process.env.JWT_SECRET,
+);
 /**
  * Internal helper to handle Supabase Auth sign up
  */
@@ -23,11 +27,18 @@ export const signUp = async (userData: any) => {
  * Internal helper to handle database record creation in master.user
  */
 export const setUser = async (authData: any, userData: any) => {
-  const { user_fname, user_mname, user_lname, user_type_id, phone, merchant_id } = userData;
-  
+  const {
+    user_fname,
+    user_mname,
+    user_lname,
+    user_type_id,
+    phone,
+    merchant_id,
+  } = userData;
+
   const { data, error } = await supabase
-    .schema('master')
-    .from('user')
+    .schema("master")
+    .from("user")
     .insert([{
       auth_uuid: authData.user.id,
       email: authData.user.email,
@@ -39,7 +50,7 @@ export const setUser = async (authData: any, userData: any) => {
       merchant_id: merchant_id || null,
       status_sw: true,
       update_by: 1,
-      update_date: new Date().toISOString()
+      update_date: new Date().toISOString(),
     }])
     .select();
 
@@ -47,11 +58,11 @@ export const setUser = async (authData: any, userData: any) => {
   return data[0];
 };
 
-export const getUsers = async(req: Request, res: Response): Promise<void> => {
+export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const { data, error } = await supabase
-      .schema('master')
-      .from('user')
+      .schema("master")
+      .from("user")
       .select(`
         id, 
         auth_uuid,
@@ -77,19 +88,21 @@ export const getUsers = async(req: Request, res: Response): Promise<void> => {
       success: true,
       data,
     });
-
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-export const getUsersByMerchantId = async(req: Request, res: Response): Promise<void> => {
+export const getUsersByMerchantId = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const { merchantId } = req.query;
 
     const { data, error } = await supabase
-      .schema('master')
-      .from('user')
+      .schema("master")
+      .from("user")
       .select(`
         id, 
         auth_uuid,
@@ -100,8 +113,8 @@ export const getUsersByMerchantId = async(req: Request, res: Response): Promise<
         user_lname,
         email
       `)
-      .eq("merchant_id",merchantId)
-      .in("user_type_id",[5,6]);
+      .eq("merchant_id", merchantId)
+      .in("user_type_id", [5, 6]);
 
     if (error) {
       res.status(400).json({ error: error.message });
@@ -112,13 +125,15 @@ export const getUsersByMerchantId = async(req: Request, res: Response): Promise<
       success: true,
       data,
     });
-
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-export const createUser = async (req: Request, res: Response): Promise<void> => {
+export const createUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const authData = await signUp(req.body);
     if (authData.user) {
@@ -131,14 +146,17 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       res.status(201).json({ success: true, data: { auth: authData } });
     }
   } catch (err: any) {
-    res.status(400).json({ error: err.message || 'Error creating user' });
+    res.status(400).json({ error: err.message || "Error creating user" });
   }
 };
 
-export const updateUser = async (req: Request, res: Response): Promise<void> => {
+export const updateUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   const { id } = req.params;
   const updateData = { ...req.body };
-  
+
   // We don't update password or email through this endpoint for security
   delete updateData.password;
   delete updateData.email;
@@ -146,13 +164,13 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
   try {
     const { data, error } = await supabase
-      .schema('master')
-      .from('user')
+      .schema("master")
+      .from("user")
       .update({
         ...updateData,
-        update_date: new Date().toISOString()
+        update_date: new Date().toISOString(),
       })
-      .eq('id', id)
+      .eq("id", id)
       .select();
 
     if (error) {
@@ -165,68 +183,84 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       data: data[0],
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-export const signInUser = async (req: Request, res: Response): Promise<void> => {
+export const signInUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   const { email, password } = req.body;
+
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) throw error;
 
     // Fetch user role from database
     const { data: dbUser } = await supabase
-      .schema('master')
-      .from('user')
-      .select('user_type_id,merchant_id,id')
-      .eq('auth_uuid', data.user.id)
+      .schema("master")
+      .from("user")
+      .select("user_type_id,merchant_id,id")
+      .eq("auth_uuid", data.user.id)
       .single();
 
     const role = dbUser?.user_type_id || 6;
-    const merchant_id = dbUser?.merchant_id || '';
-    const user_id = dbUser?.id ||0;
+    const merchant_id = dbUser?.merchant_id || "";
+    const user_id = dbUser?.id || 0;
+    const payLoad = { email: data.user.email, role, merchant_id, user_id };
+
+    const jwt = await new jose.SignJWT(payLoad)
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setIssuer("simplyticketz")
+      .setAudience("merchant-portal")
+      .setExpirationTime("5m")
+      .sign(jwtSecret);
     // Create JWE (JSON Web Encryption)
     const jwe = await new jose.CompactEncrypt(
-      new TextEncoder().encode(JSON.stringify({ email: data.user.email, role,merchant_id ,user_id}))
+      new TextEncoder().encode(
+        jwt,
+      ),
     )
-      .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
-      .encrypt(SECRET);
+      .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
+      .encrypt(jweSecret);
 
     res.status(200).json({
       success: true,
       token: jwe,
-      user: { email: data.user.email, role,merchant_id, user_id }
     });
   } catch (err: any) {
     res.status(401).json({ error: err.message });
   }
 };
 
-
 export const generateGuestToken = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { email } = req.body;
 
     const role = 7; // Customer Role
-    const merchant_id ='' ;
+    const merchant_id = "";
     const jwe = await new jose.CompactEncrypt(
       new TextEncoder().encode(
         JSON.stringify({
-          email: email || '',
+          email: email || "",
           role,
-          merchant_id: merchant_id || ''
-        })
-      )
+          merchant_id: merchant_id || "",
+        }),
+      ),
     )
       .setProtectedHeader({
-        alg: 'dir',
-        enc: 'A256GCM'
+        alg: "dir",
+        enc: "A256GCM",
       })
-      .encrypt(SECRET);
+      .encrypt(jweSecret);
 
     res.status(200).json({
       success: true,
@@ -234,21 +268,24 @@ export const generateGuestToken = async (
       user: {
         email,
         role,
-        merchant_id
-      }
+        merchant_id,
+      },
     });
   } catch (err: any) {
     res.status(500).json({
       success: false,
-      error: err.message
+      error: err.message,
     });
   }
 };
 
-export const signOutUser = async (req: Request, res: Response): Promise<void> => {
+export const signOutUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     await supabase.auth.signOut();
-    res.status(200).json({ success: true, message: 'Signed out successfully' });
+    res.status(200).json({ success: true, message: "Signed out successfully" });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

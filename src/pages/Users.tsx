@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
 import { UserPlus, Loader2, Mail, Phone, User as UserIcon, Lock, Building2, ShieldCheck, Pencil, X } from 'lucide-react';
-import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
+import {getAuthHeader} from "@/utils/common";
 import { API_URL } from "@/config";
 
 const Users = () => {
@@ -38,11 +38,6 @@ const Users = () => {
     status_sw: true,
     update_by: '1'
   });
-
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  };
 
   // Fetch Users
   const { data: users, isLoading: isLoadingUsers } = useQuery({

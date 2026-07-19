@@ -39,7 +39,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMutation } from "@tanstack/react-query";
 import { showError, showSuccess } from "@/utils/toast";
 import { API_URL } from "@/config";
-import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 const MOCK_EVENTS = [
   {
     id: 1,

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, ChevronLeft, ChevronRight, AlertCircle, ImageIcon } from 'lucide-react';
 import { API_URL } from '@/config';
 import { cn } from '@/lib/utils';
-
+import {getAuthHeader} from "@/utils/common";
 interface PictureRecord {
   id: number;
   picture_id: string; // File path inside the Supabase bucket
@@ -26,9 +26,6 @@ export function ModalPictureShow({ serviceId, categoryId, onClose }: ModalPictur
   const [loadingUrl, setLoadingUrl] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getAuthHeader = () => ({
-    'Authorization': `Bearer ${localStorage.getItem('token')}`
-  });
 
   // Fetch list of pictures for this category
   useEffect(() => {

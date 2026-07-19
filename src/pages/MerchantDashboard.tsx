@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import {getAuthHeader} from "@/utils/common";
+import {API_URL} from "@/config";
 import {
   Card,
   CardContent,
@@ -50,17 +52,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const API_URL = "http://localhost:5000/api";
 const COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#14b8a6"];
 
 const MerchantDashboard = () => {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = JSON.parse(sessionStorage.getItem("user") || "{}");
   const merchantId = user.merchant_id;
   const [dateFilter, setDateFilter] = useState("month");
-
-  const getAuthHeader = () => ({
-    "Authorization": `Bearer ${localStorage.getItem("token")}`,
-  });
 
   // Calculate Date Ranges
   const dateRange = useMemo(() => {

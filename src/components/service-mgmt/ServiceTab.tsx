@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 
 import { API_URL } from "@/config";
-import { getMerchantId, getUserId, getUserEmail, getUserRoleId, getAuthHeader } from "@/utils/common";
+import { getUserRoleId, getAuthHeader } from "@/utils/common";
 
 const serviceSchema = z.object({
   merchant_id: z.string().min(1, "Merchant is required"),

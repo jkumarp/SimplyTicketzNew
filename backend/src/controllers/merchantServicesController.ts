@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { supabase } from "../config/supabase.ts";
 import {
     generateKeyPairSync
-} from "../services/cryptoService";
+} from "../services/eciesService";
 
 
 export const createMerchantService = async (

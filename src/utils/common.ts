@@ -9,7 +9,7 @@ export interface User {
   }
   
   export function getUser(): User {
-    return JSON.parse(localStorage.getItem("user") || "{}");
+    return JSON.parse(sessionStorage.getItem("user") || "{}");
   }
   
   export function getMerchantId(): number {
@@ -30,6 +30,6 @@ export interface User {
 
   export function getAuthHeader() {
     return {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      Authorization: `Bearer ${sessionStorage.getItem("token")}`,
     };
   }

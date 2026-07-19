@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { API_URL } from '@/config';
-import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
+import {getAuthHeader} from "@/utils/common";
 const AdminManageEnquiry = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");

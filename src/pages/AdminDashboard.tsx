@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Link } from 'react-router-dom';
 import { API_URL } from "@/config";
-import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
+import { getAuthHeader} from "@/utils/common";
 import { 
   Users, Store, Ticket, TrendingUp, 
   AlertCircle, ArrowRight,

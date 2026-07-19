@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
+import {getAuthHeader} from "@/utils/common";
 import { 
   Form,
   FormControl,

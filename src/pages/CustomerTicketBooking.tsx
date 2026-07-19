@@ -9,7 +9,7 @@ import Footer from "@/components/Footer";
 import SiteMapDialog from "@/components/SiteMapDialog";
 import { API_URL } from "@/config";
 import { ModalPictureShow } from "@/components/ModelPictureShow";
-import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
+import {getAuthHeader} from "@/utils/common";
 import {
   Card,
   CardContent,
