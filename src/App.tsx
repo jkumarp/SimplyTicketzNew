@@ -21,6 +21,7 @@ import MerchantServicePicture from "./pages/MerchantServicePicture";
 import MerchantServiceVoucher from "./pages/MerchantServiceVoucher";
 import MerchantServiceUser from "./pages/MerchantServiceUser";
 import QRCodeStandy from "./pages/QRCodeStandy";
+import SessionTimeoutWarning from "@/components/SessionTimeoutWarning";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <SessionTimeoutWarning />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/users" element={<Users />} />

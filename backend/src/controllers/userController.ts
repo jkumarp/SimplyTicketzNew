@@ -238,6 +238,67 @@ export const signInUser = async (
   }
 };
 
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "Missing token" });
+      return;
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    // Decrypt JWE
+    const { plaintext } = await jose.compactDecrypt(token, jweSecret);
+
+    const jwt = new TextDecoder().decode(plaintext);
+
+    // Verify current token (must not be expired)
+    const { payload } = await jose.jwtVerify(jwt, jwtSecret, {
+      issuer: "simplyticketz",
+      audience: "merchant-portal",
+    });
+
+    // Create new access token
+    const newJwt = await new jose.SignJWT({
+      email: payload.email,
+      role: payload.role,
+      merchant_id: payload.merchant_id,
+      user_id: payload.user_id,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setIssuer("simplyticketz")
+      .setAudience("merchant-portal")
+      .setExpirationTime("5m")
+      .sign(jwtSecret);
+
+    // Encrypt it
+    const newJwe = await new jose.CompactEncrypt(
+      new TextEncoder().encode(newJwt)
+    )
+      .setProtectedHeader({
+        alg: "dir",
+        enc: "A256GCM",
+      })
+      .encrypt(jweSecret);
+
+    res.status(200).json({
+      success: true,
+      token: newJwe,
+    });
+  } catch (err: any) {
+    res.status(401).json({
+      success: false,
+      error: "Session expired",
+    });
+  }
+};
+
 export const generateGuestToken = async (
   req: Request,
   res: Response,

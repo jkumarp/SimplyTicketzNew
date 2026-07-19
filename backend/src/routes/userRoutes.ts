@@ -3,7 +3,7 @@ import {
     createUser,
     getUsers,
     getUsersByMerchantId,
-    updateUser,
+    updateUser,refreshToken,
 } from "../controllers/userController";
 import { authorizeRoles } from "../middleware/authMiddleware";
 
@@ -45,7 +45,7 @@ router.post(
     apiRateLimiter(),
     createUser,
 );
-
+router.post("/refresh-token", refreshToken);
 /**
  * @swagger
  * /api/users/{id}:

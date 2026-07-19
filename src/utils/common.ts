@@ -6,6 +6,9 @@ export interface User {
     role:number;
     user_fname?: string;
     email?: string;
+    exp:number;
+    iat:number;
+    iss:string;
   }
   
   export function getUser(): User {
@@ -28,6 +31,9 @@ export interface User {
     return getUser().role;
   }
 
+  export function getSessionExpiry(): number {
+    return getUser().exp;
+  }
   export function getAuthHeader() {
     return {
       Authorization: `Bearer ${sessionStorage.getItem("token")}`,
