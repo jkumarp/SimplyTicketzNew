@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase.ts';
+import { logControllerError } from '../services/loggerService';
 
 export const createTicketTimeslot = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -11,9 +12,9 @@ export const createTicketTimeslot = async (req: Request, res: Response): Promise
       start,
       end,
       total_ticket_count,
-      update_by,
       status_sw
     } = req.body;
+    const update_by = (req as any).user?.user_id;
 
     const { data, error } = await supabase
       .schema('master')
@@ -42,6 +43,7 @@ export const createTicketTimeslot = async (req: Request, res: Response): Promise
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'TicketTimeslotController', 'createTicketTimeslot');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -56,6 +58,7 @@ export const updateTicketTimeslot = async (req: Request, res: Response): Promise
       .from('ticket_timeslot')
       .update({
         ...updateData,
+        update_by: (req as any).user?.user_id,
         update_date: new Date().toISOString()
       })
       .eq('id', id)
@@ -71,6 +74,7 @@ export const updateTicketTimeslot = async (req: Request, res: Response): Promise
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'TicketTimeslotController', 'updateTicketTimeslot');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -96,6 +100,7 @@ export const getTicketTimeslots = async (req: Request, res: Response): Promise<v
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, 'TicketTimeslotController', 'getTicketTimeslots');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -122,6 +127,7 @@ export const getTicketTimeslotsByService = async (req: Request, res: Response): 
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, 'TicketTimeslotController', 'getTicketTimeslotsByService');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -147,6 +153,7 @@ export const getTicketTimeslotsByCategory = async (req: Request, res: Response):
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, 'TicketTimeslotController', 'getTicketTimeslotsByCategory');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

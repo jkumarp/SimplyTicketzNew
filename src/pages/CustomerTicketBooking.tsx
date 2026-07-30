@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
@@ -85,13 +85,60 @@ const CustomerTicketBooking = () => {
     name: "",
     phone: "",
     email: "",
-    payment_mode: "CASH",
+    // Self-service checkout is unattended, so cash isn't an option here -
+    // every booking goes through the merchant's configured payment gateway
+    // (see backend/src/services/paymentServices.ts).
+    payment_mode: "UPI",
   });
+  const [isRedirectingToGateway, setIsRedirectingToGateway] = useState(false);
 
   const [voucherCode, setVoucherCode] = useState("");
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
   const [appliedVoucher, setAppliedVoucher] = useState<string | null>(null);
+
+  // This page is reached by customers directly (e.g. a shared booking link),
+  // most of whom have never signed in. Every fetch below needs an
+  // Authorization header, so if there's no session yet we silently mint a
+  // guest token (role 7) before running any of the queries - the customer
+  // never sees a login screen.
+  const [sessionReady, setSessionReady] = useState(
+    !!sessionStorage.getItem("token"),
+  );
+
+  useEffect(() => {
+    if (sessionStorage.getItem("token")) {
+      setSessionReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/guestLogin`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        if (!res.ok) throw new Error("Guest authentication failed");
+        const data = await res.json();
+        if (cancelled) return;
+        sessionStorage.setItem("token", data.token);
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+        window.dispatchEvent(new Event("storage"));
+      } catch (err: any) {
+        if (!cancelled) {
+          showError("Couldn't start a booking session. Please refresh the page.");
+        }
+      } finally {
+        if (!cancelled) setSessionReady(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Queries
   const { data: service, isLoading: isLoadingService } = useQuery({
@@ -103,7 +150,7 @@ const CustomerTicketBooking = () => {
       const data = await res.json();
       return data.data.find((s: any) => s.id.toString() === serviceId);
     },
-    enabled: !!serviceId,
+    enabled: !!serviceId && sessionReady,
   });
 
   // Fetch subscriptions for this merchant
@@ -120,7 +167,7 @@ const CustomerTicketBooking = () => {
       if (!res.ok) throw new Error("Failed to fetch subscriptions");
       return (await res.json()).data;
     },
-    enabled: !!serviceId,
+    enabled: !!serviceId && sessionReady,
   });
 
   const { data: calendarData } = useQuery({
@@ -136,7 +183,7 @@ const CustomerTicketBooking = () => {
       const json = await res.json();
       return json.data;
     },
-    enabled: !!serviceId,
+    enabled: !!serviceId && sessionReady,
   });
 
   const { data: categories, isLoading: isLoadingCategories } = useQuery({
@@ -150,7 +197,7 @@ const CustomerTicketBooking = () => {
       );
       return (await res.json()).data;
     },
-    enabled: !!serviceId,
+    enabled: !!serviceId && sessionReady,
   });
 
   const { data: timeslots } = useQuery({
@@ -302,14 +349,64 @@ const CustomerTicketBooking = () => {
       if (!res.ok) throw new Error("Booking failed");
       return res.json();
     },
-    onSuccess: (data) => {
-      showSuccess("Booking confirmed successfully!");
-      navigate(`/merchant/print/${data.invoiceId}`);
+    onError: (err: any) => showError(err.message),
+  });
+
+  // Creates a gateway checkout session for the invoice bookingMutation just
+  // created. Tickets stay PENDING (see backend bookTicket) until the
+  // customer completes payment and the gateway redirect/webhook confirms it
+  // on the payment-result page - this call never itself confirms anything.
+  const initiatePaymentMutation = useMutation({
+    mutationFn: async (invoiceId: number) => {
+      const res = await fetch(`${API_URL}/payments/initiate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify({ invoice_id: invoiceId }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Could not start payment");
+      }
+      return json.data;
     },
     onError: (err: any) => showError(err.message),
   });
 
-  const handleBuyTickets = () => {
+  // Lazily injects the Cashfree Checkout JS SDK (not needed for the
+  // Easebuzz flow, which is a plain redirect) and returns the ready-to-use
+  // `cashfree` client.
+  const loadCashfreeSdk = async (mode: "production" | "sandbox") => {
+    if (!(window as any).Cashfree) {
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Failed to load Cashfree checkout"));
+        document.body.appendChild(script);
+      });
+    }
+    return (window as any).Cashfree({ mode });
+  };
+
+  const redirectToGateway = async (checkout: any) => {
+    if (checkout.gatewayCode === "CASHFREE") {
+      const cashfree = await loadCashfreeSdk(
+        checkout.environment === "PRODUCTION" ? "production" : "sandbox",
+      );
+      cashfree.checkout({
+        paymentSessionId: checkout.paymentSessionId,
+        redirectTarget: "_self",
+      });
+      return;
+    }
+    if (checkout.gatewayCode === "EASEBUZZ") {
+      window.location.href = checkout.paymentUrl;
+      return;
+    }
+    throw new Error(`Unsupported payment gateway: ${checkout.gatewayCode}`);
+  };
+
+  const handleBuyTickets = async () => {
     const totals = calculateTotal();
     if (totals.count === 0) {
       return showError("Please select at least one ticket");
@@ -342,7 +439,7 @@ const CustomerTicketBooking = () => {
           };
         });
 
-      bookingMutation.mutate({
+      const booking = await bookingMutation.mutateAsync({
         customer_name: customerInfo.name,
         customer_phone: customerInfo.phone,
         customer_phone_code: 91,
@@ -361,8 +458,16 @@ const CustomerTicketBooking = () => {
         cgst: totals.cgstAmount,
         igst: totals.igstAmount,
         grand_total: totals.total,
+        // Self-service booking - hold tickets as PENDING until payment
+        // through the merchant's gateway is confirmed.
+        require_payment_confirmation: true,
       });
+
+      setIsRedirectingToGateway(true);
+      const checkout = await initiatePaymentMutation.mutateAsync(booking.invoiceId);
+      await redirectToGateway(checkout);
     } catch (err: any) {
+      setIsRedirectingToGateway(false);
       showError(err.message);
     }
   };
@@ -377,7 +482,7 @@ const CustomerTicketBooking = () => {
     return !calendarData.includes(dateStr);
   };
 
-  if (isLoadingService || isLoadingCategories) {
+  if (!sessionReady || isLoadingService || isLoadingCategories) {
     return (
       <div className="min-h-screen bg-slate-50/50 flex flex-col">
         <Navbar />
@@ -526,6 +631,9 @@ const CustomerTicketBooking = () => {
                         email: e.target.value,
                       })}
                   />
+                  <p className="text-xs text-slate-400">
+                    Your tickets and invoice will be emailed here once payment is confirmed.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-600 font-medium">
@@ -540,9 +648,9 @@ const CustomerTicketBooking = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CASH">Cash Payment</SelectItem>
-                      <SelectItem value="UPI">UPI Transfer</SelectItem>
+                      <SelectItem value="UPI">UPI</SelectItem>
                       <SelectItem value="CARD">Credit/Debit Card</SelectItem>
+                      <SelectItem value="NB">Netbanking</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1034,17 +1142,26 @@ const CustomerTicketBooking = () => {
                 <Button
                   onClick={handleBuyTickets}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 text-sm font-bold rounded-xl shadow-sm transition-all"
-                  disabled={!isActive || (count === 0 || bookingMutation.isPending)}
+                  disabled={!isActive || count === 0 ||
+                    bookingMutation.isPending || initiatePaymentMutation.isPending ||
+                    isRedirectingToGateway}
                 >
                   {bookingMutation.isPending
                     ? (
                       <div className="flex items-center gap-2">
                         <Loader2 className="animate-spin h-4 w-4" />{" "}
-                        Processing Order...
+                        Confirming Order...
+                      </div>
+                    )
+                    : initiatePaymentMutation.isPending || isRedirectingToGateway
+                    ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="animate-spin h-4 w-4" />{" "}
+                        Redirecting to Payment...
                       </div>
                     )
                     : (
-                      "Generate & Print Tickets"
+                      "Proceed to Payment"
                     )}
                 </Button>
               </CardFooter>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Briefcase,
   CreditCard,
@@ -27,15 +27,23 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { showError, showSuccess } from "@/utils/toast";
-import * as jose from "jose";
-import { API_URL } from "@/config";
+import { API_URL, RECAPTCHA_SITE_KEY } from "@/config";
+import { loginSchema, collectZodErrors } from "@/lib/validationSchemas";
+import Recaptcha, { RecaptchaHandle } from "@/components/Recaptcha";
 
 const Navbar = () => {
   const [user, setUser] = useState<any>(null);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<RecaptchaHandle>(null);
   const navigate = useNavigate();
+  // Role 7 is a guest/customer session auto-issued by pages like
+  // CustomerTicketBooking so anonymous visitors can browse and book without
+  // signing in first - it shouldn't make the navbar look "signed in".
+  const isAuthenticatedUser = !!user && user.role !== 7;
 
   useEffect(() => {
     const storedUser = sessionStorage.getItem("user");
@@ -52,34 +60,33 @@ const Navbar = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const result = loginSchema.safeParse(loginData);
+    if (!result.success) {
+      setLoginErrors(collectZodErrors(result.error));
+      return;
+    }
+    if (!captchaToken) {
+      showError("Please verify you are not a robot.");
+      return;
+    }
+    setLoginErrors({});
     setIsLoading(true);
     try {
       const res = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(loginData),
+        body: JSON.stringify({ ...loginData, recaptchaToken: captchaToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
+      // The backend returns the decoded user payload alongside the token,
+      // so the client never needs to decrypt/verify the JWE/JWT itself -
+      // doing that would require shipping the JWT/JWE secrets to the
+      // browser, which would let anyone forge their own session token.
       sessionStorage.setItem("token", data.token);
-
-      const jweSecret = new TextEncoder().encode(
-        import.meta.env.VITE_JWE_SECRET,
-      );
-      const jwtSecret = new TextEncoder().encode(
-        import.meta.env.VITE_JWT_SECRET,
-      );
-      const { plaintext } = await jose.compactDecrypt(data.token, jweSecret);
-
-      const tokenData = new TextDecoder().decode(plaintext);
-
-      const { payload } = await jose.jwtVerify(tokenData, jwtSecret, {
-        issuer: "simplyticketz",
-        audience: "merchant-portal",
-      });
-      sessionStorage.setItem("user", JSON.stringify(payload));
-      setUser(payload);
+      sessionStorage.setItem("user", JSON.stringify(data.user));
+      setUser(data.user);
       setIsLoginOpen(false);
       showSuccess("Welcome back!");
 
@@ -91,6 +98,10 @@ const Navbar = () => {
       window.dispatchEvent(new Event("storage"));
     } catch (err: any) {
       showError(err.message);
+      // reCAPTCHA tokens are single-use, so a failed attempt needs a fresh
+      // verification before the next submit is allowed.
+      setCaptchaToken(null);
+      recaptchaRef.current?.reset();
     } finally {
       setIsLoading(false);
     }
@@ -141,7 +152,7 @@ const Navbar = () => {
 
         <div className="flex items-center gap-2 md:gap-4">
           <div className="hidden sm:flex items-center gap-2">
-            {user && (
+            {isAuthenticatedUser && (
               <div className="flex items-center gap-2">
                 <Link to={getDashboardLink() || "#"}>
                   <Button
@@ -183,7 +194,7 @@ const Navbar = () => {
             )}
           </div>
 
-          {user
+          {isAuthenticatedUser
             ? (
               <div className="flex items-center gap-2">
                 <Button
@@ -198,7 +209,13 @@ const Navbar = () => {
               </div>
             )
             : (
-              <Dialog open={isLoginOpen} onOpenChange={setIsLoginOpen}>
+              <Dialog
+                open={isLoginOpen}
+                onOpenChange={(open) => {
+                  setIsLoginOpen(open);
+                  if (!open) setCaptchaToken(null);
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button
                     variant="default"
@@ -219,17 +236,22 @@ const Navbar = () => {
                       <Input
                         id="nav-email"
                         type="email"
+                        maxLength={100}
                         required
                         value={loginData.email}
                         onChange={(e) =>
                           setLoginData({ ...loginData, email: e.target.value })}
                       />
+                      {loginErrors.email && (
+                        <p className="text-sm text-red-500">{loginErrors.email}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="nav-password">Password</Label>
                       <Input
                         id="nav-password"
                         type="password"
+                        maxLength={20}
                         required
                         value={loginData.password}
                         onChange={(e) =>
@@ -238,11 +260,20 @@ const Navbar = () => {
                             password: e.target.value,
                           })}
                       />
+                      {loginErrors.password && (
+                        <p className="text-sm text-red-500">{loginErrors.password}</p>
+                      )}
                     </div>
+                    <Recaptcha
+                      ref={recaptchaRef}
+                      siteKey={RECAPTCHA_SITE_KEY}
+                      onVerify={setCaptchaToken}
+                      onExpire={() => setCaptchaToken(null)}
+                    />
                     <Button
                       type="submit"
                       className="w-full bg-indigo-600"
-                      disabled={isLoading}
+                      disabled={isLoading || !captchaToken}
                     >
                       {isLoading
                         ? <Loader2 className="h-4 w-4 animate-spin" />

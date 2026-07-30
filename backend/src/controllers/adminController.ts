@@ -1,5 +1,6 @@
 import { generateKeyPair } from "../utils/generateKeyPair";
 import { Request, Response } from "express";
+import { logControllerError } from "../services/loggerService";
 
 export const generateKey = async (
     req: Request,
@@ -13,6 +14,7 @@ export const generateKey = async (
             data: keyPair,
         });
     } catch (err) {
+        await logControllerError(req, err, "AdminController", "generateKey");
         res.status(500).json({
             success: false,
             error: "Internal Server Error",

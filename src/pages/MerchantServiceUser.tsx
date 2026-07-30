@@ -2,7 +2,12 @@
 
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -26,6 +31,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -65,10 +78,15 @@ const mappingSchema = z.object({
 
 type MappingFormValues = z.infer<typeof mappingSchema>;
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
 const MerchantServiceUser = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [jumpToPage, setJumpToPage] = useState("");
 
   const loggedInUser = getUserId();
   const merchantId = getMerchantId();
@@ -113,22 +131,65 @@ const MerchantServiceUser = () => {
     );
   }, [users, merchantId]);
 
-  // Fetch service user mappings for this merchant
-  const { data: mappings, isLoading: isLoadingMappings } = useQuery({
-    queryKey: ["merchant-service-users", merchantId],
+  // Fetch service user mappings for this merchant (server-side paginated)
+  const {
+    data: mappingsResponse,
+    isLoading: isLoadingMappings,
+    isFetching: isFetchingMappings,
+  } = useQuery({
+    queryKey: ["merchant-service-users", merchantId, page, pageSize],
     queryFn: async () => {
-      if (!merchantId) return [];
+      if (!merchantId) return { data: [], pagination: { page: 1, pageSize, total: 0, totalPages: 1 } };
+      const params = new URLSearchParams({
+        merchantId: merchantId.toString(),
+        page: String(page),
+        pageSize: String(pageSize),
+      });
       const res = await fetch(
-        `${API_URL}/merchant-service-users?merchantId=${merchantId}`,
+        `${API_URL}/merchant-service-users?${params.toString()}`,
         {
           headers: getAuthHeader(),
         },
       );
       if (!res.ok) throw new Error("Failed to fetch service mappings");
-      return (await res.json()).data;
+      return res.json();
     },
     enabled: !!merchantId,
+    placeholderData: keepPreviousData,
   });
+
+  const mappings = mappingsResponse?.data ?? [];
+  const pagination = mappingsResponse?.pagination ?? {
+    page: 1,
+    pageSize,
+    total: 0,
+    totalPages: 1,
+  };
+
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setPage(1);
+  };
+
+  const handleJumpToPage = () => {
+    const target = parseInt(jumpToPage, 10);
+    if (!Number.isNaN(target) && target >= 1 && target <= pagination.totalPages) {
+      setPage(target);
+    }
+    setJumpToPage("");
+  };
+
+  // Compute a small window of page numbers to display (max 4 visible)
+  const getPageNumbers = () => {
+    const totalPages = pagination.totalPages;
+    const windowSize = 4;
+    let start = Math.max(1, page - Math.floor(windowSize / 2));
+    const end = Math.min(totalPages, start + windowSize - 1);
+    start = Math.max(1, end - windowSize + 1);
+    const pages = [];
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
 
   const form = useForm<MappingFormValues>({
     resolver: zodResolver(mappingSchema),
@@ -142,7 +203,7 @@ const MerchantServiceUser = () => {
   const mutation = useMutation({
     mutationFn: async (data: MappingFormValues) => {
       const payload = {
-        merchant_id: parseInt(merchantId),
+        merchant_id: merchantId,
         service_id: parseInt(data.service_id),
         user_id: parseInt(data.user_id),
         status_sw: data.status_sw,
@@ -398,8 +459,13 @@ const MerchantServiceUser = () => {
                   List of authorized staff users mapped to specific services
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="rounded-xl border overflow-hidden">
+              <CardContent className="p-0">
+                <div className="rounded-xl border overflow-hidden relative m-6">
+                  {isFetchingMappings && (
+                    <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+                      <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+                    </div>
+                  )}
                   <Table>
                     <TableHeader className="bg-slate-50">
                       <TableRow>
@@ -494,6 +560,110 @@ const MerchantServiceUser = () => {
                   </Table>
                 </div>
               </CardContent>
+
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t bg-white px-6 py-4">
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <span>Rows per page</span>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={handlePageSizeChange}
+                  >
+                    <SelectTrigger className="w-[80px] h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <SelectItem key={size} value={String(size)}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="ml-2">
+                    {pagination.total === 0
+                      ? "0 results"
+                      : `${(pagination.page - 1) * pagination.pageSize + 1}-${
+                        Math.min(
+                          pagination.page * pagination.pageSize,
+                          pagination.total,
+                        )
+                      } of ${pagination.total}`}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <Pagination className="mx-0 w-auto">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (page > 1) setPage(page - 1);
+                          }}
+                          className={page <= 1
+                            ? "pointer-events-none opacity-50"
+                            : ""}
+                        />
+                      </PaginationItem>
+                      {getPageNumbers().map((p) => (
+                        <PaginationItem key={p}>
+                          <PaginationLink
+                            href="#"
+                            isActive={p === page}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPage(p);
+                            }}
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (page < pagination.totalPages) {
+                              setPage(page + 1);
+                            }
+                          }}
+                          className={page >= pagination.totalPages
+                            ? "pointer-events-none opacity-50"
+                            : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-500 whitespace-nowrap">
+                      Go to
+                    </span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={pagination.totalPages}
+                      value={jumpToPage}
+                      onChange={(e) => setJumpToPage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleJumpToPage();
+                      }}
+                      className="w-16 h-9"
+                      placeholder={String(page)}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9"
+                      onClick={handleJumpToPage}
+                    >
+                      Go
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </Card>
           </div>
         </div>

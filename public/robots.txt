@@ -1,8 +1,18 @@
 User-agent: Googlebot
 Allow: /
+Disallow: /admin/
+Disallow: /merchant/
+Disallow: /users
+Disallow: /merchants
+Disallow: /payment-result/
 
 User-agent: Bingbot
 Allow: /
+Disallow: /admin/
+Disallow: /merchant/
+Disallow: /users
+Disallow: /merchants
+Disallow: /payment-result/
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +22,10 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /merchant/
+Disallow: /users
+Disallow: /merchants
+Disallow: /payment-result/
+
+Sitemap: https://simplyticketz.com/sitemap.xml

@@ -330,8 +330,15 @@ const MerchantTicketBooking = () => {
         headers: { "Content-Type": "application/json", ...getAuthHeader() },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Booking failed");
-      return res.json();
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        // Surface the backend's actual validation/business-rule message
+        // (e.g. "A valid phone number is required") instead of a generic
+        // "Booking failed" toast that gives no clue what to fix.
+        const detail = data?.details?.[0]?.message;
+        throw new Error(detail || data?.error || "Booking failed");
+      }
+      return data;
     },
     onSuccess: (data) => {
       showSuccess("Booking confirmed successfully!");

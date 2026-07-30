@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { supabase } from "../config/supabase.ts";
+import { logControllerError } from "../services/loggerService";
 
 export const uploadMerchantLogo = async (
   req: Request,
@@ -38,6 +39,7 @@ export const uploadMerchantLogo = async (
       },
     });
   } catch (err) {
+    await logControllerError(req, err, "DocumentController", "uploadMerchantLogo");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -80,6 +82,7 @@ export const uploadDocument = async (
       },
     });
   } catch (err) {
+    await logControllerError(req, err, "DocumentController", "uploadDocument");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -109,6 +112,7 @@ export const getSignedUrl = async (
       data: data.signedUrl,
     });
   } catch (err) {
+    await logControllerError(req, err, "DocumentController", "getSignedUrl");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -138,6 +142,7 @@ export const deleteDocument = async (
       message: "File deleted successfully",
     });
   } catch (err) {
+    await logControllerError(req, err, "DocumentController", "deleteDocument");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };

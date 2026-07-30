@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Users from "./pages/Users";
@@ -14,8 +15,10 @@ import MerchantTicketBooking from "./pages/MerchantTicketBooking";
 import MerchantManageTickets from "./pages/MerchantManageTickets";
 import MerchantPrintTicket from "./pages/MerchantPrintTicket";
 import CustomerTicketBooking from "./pages/CustomerTicketBooking";
+import BookingPaymentResult from "./pages/BookingPaymentResult";
 import ViewSiteMap from "./pages/ViewSiteMap";
 import AdminManageEnquiry from "./pages/AdminManageEnquiry";
+import AdminMerchantPGMapping from "./pages/AdminMerchantPGMapping";
 import MerchantServiceHolidays from "./pages/MerchantServiceHolidays";
 import MerchantServicePicture from "./pages/MerchantServicePicture";
 import MerchantServiceVoucher from "./pages/MerchantServiceVoucher";
@@ -27,36 +30,40 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SessionTimeoutWarning />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/users" element={<Users />} />
-          <Route path="/merchants" element={<Merchants />} />
-          <Route path="/merchant-services" element={<MerchantServices />} />
-          <Route path="/merchant-subscriptions" element={<MerchantSubscription />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/enquiries" element={<AdminManageEnquiry />} />
-          <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
-          <Route path="/merchant/book/:serviceId" element={<MerchantTicketBooking />} />
-          <Route path="/merchant/manage/:serviceId" element={<MerchantManageTickets />} />
-          <Route path="/merchant/print/:ticketId" element={<MerchantPrintTicket />} />
-          <Route path="/merchant/holidays/:serviceId" element={<MerchantServiceHolidays />} />
-          <Route path="/merchant/pictures/:serviceId" element={<MerchantServicePicture />} />
-          <Route path="/merchant/vouchers/:serviceId" element={<MerchantServiceVoucher />} />
-          <Route path="/merchant/users" element={<MerchantServiceUser />} />
-          <Route path="/merchant/standy/:serviceId" element={<QRCodeStandy />} />
-          <Route path="/book/:serviceId" element={<CustomerTicketBooking />} />
-          <Route path="/view-site-map" element={<ViewSiteMap />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <SessionTimeoutWarning />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/users" element={<Users />} />
+            <Route path="/merchants" element={<Merchants />} />
+            <Route path="/merchant-services" element={<MerchantServices />} />
+            <Route path="/merchant-subscriptions" element={<MerchantSubscription />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/enquiries" element={<AdminManageEnquiry />} />
+            <Route path="/admin/pg-mappings" element={<AdminMerchantPGMapping />} />
+            <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
+            <Route path="/merchant/book/:serviceId" element={<MerchantTicketBooking />} />
+            <Route path="/merchant/manage/:serviceId" element={<MerchantManageTickets />} />
+            <Route path="/merchant/print/:ticketId" element={<MerchantPrintTicket />} />
+            <Route path="/merchant/holidays/:serviceId" element={<MerchantServiceHolidays />} />
+            <Route path="/merchant/pictures/:serviceId" element={<MerchantServicePicture />} />
+            <Route path="/merchant/vouchers/:serviceId" element={<MerchantServiceVoucher />} />
+            <Route path="/merchant/users" element={<MerchantServiceUser />} />
+            <Route path="/merchant/standy/:serviceId" element={<QRCodeStandy />} />
+            <Route path="/book/:serviceId" element={<CustomerTicketBooking />} />
+            <Route path="/payment-result/:invoiceId" element={<BookingPaymentResult />} />
+            <Route path="/view-site-map" element={<ViewSiteMap />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;

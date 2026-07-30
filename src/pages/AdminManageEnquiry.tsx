@@ -1,11 +1,19 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,23 +42,80 @@ import {
 import { Link } from 'react-router-dom';
 import { API_URL } from '@/config';
 import {getAuthHeader} from "@/utils/common";
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
 const AdminManageEnquiry = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [editingEnquiry, setEditingEnquiry] = useState<any>(null);
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [jumpToPage, setJumpToPage] = useState("");
 
+  // Debounce search input before it hits the server
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1); // reset to first page whenever the search changes
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [searchTerm]);
 
-  const { data: enquiries, isLoading } = useQuery({
-    queryKey: ['merchant-enquiries'],
+  const { data: enquiriesResponse, isLoading, isFetching } = useQuery({
+    queryKey: ['merchant-enquiries', page, pageSize, debouncedSearch, statusFilter],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/merchant-enquiries`, {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+
+      const res = await fetch(`${API_URL}/merchant-enquiries?${params.toString()}`, {
         headers: getAuthHeader()
       });
       if (!res.ok) throw new Error('Failed to fetch enquiries');
-      return (await res.json()).data;
-    }
+      return res.json();
+    },
+    placeholderData: keepPreviousData,
   });
+
+  const enquiries = enquiriesResponse?.data ?? [];
+  const pagination = enquiriesResponse?.pagination ?? { page: 1, pageSize, total: 0, totalPages: 1 };
+
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setPage(1);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setPage(1);
+  };
+
+  const handleJumpToPage = () => {
+    const target = parseInt(jumpToPage, 10);
+    if (!Number.isNaN(target) && target >= 1 && target <= pagination.totalPages) {
+      setPage(target);
+    }
+    setJumpToPage("");
+  };
+
+  // Compute a small window of page numbers to display (max 4 visible)
+  const getPageNumbers = () => {
+    const totalPages = pagination.totalPages;
+    const windowSize = 4;
+    let start = Math.max(1, page - Math.floor(windowSize / 2));
+    const end = Math.min(totalPages, start + windowSize - 1);
+    start = Math.max(1, end - windowSize + 1);
+    const pages = [];
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -76,11 +141,6 @@ const AdminManageEnquiry = () => {
     },
     onError: (err: any) => showError(err.message)
   });
-
-  const filteredEnquiries = enquiries?.filter((e: any) => 
-    e.merchant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.merchant_email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const getStatusBadge = (status: string) => {
     const styles: any = {
@@ -110,14 +170,29 @@ const AdminManageEnquiry = () => {
                 <p className="text-slate-500">Manage partnership requests and onboarding status</p>
               </div>
             </div>
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input 
-                placeholder="Search by name or email..." 
-                className="pl-10 bg-white"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search by name or email..."
+                  className="pl-10 bg-white"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+                <SelectTrigger className="w-full sm:w-44 bg-white">
+                  <Filter className="h-4 w-4 text-slate-400 mr-1" />
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="Created">Created</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="On Hold">On Hold</SelectItem>
+                  <SelectItem value="Closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -128,7 +203,12 @@ const AdminManageEnquiry = () => {
                   <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto relative">
+                  {isFetching && (
+                    <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+                      <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+                    </div>
+                  )}
                   <Table>
                     <TableHeader className="bg-slate-50">
                       <TableRow>
@@ -140,14 +220,14 @@ const AdminManageEnquiry = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredEnquiries?.length === 0 ? (
+                      {enquiries?.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-12 text-slate-400 italic">
                             No enquiries found
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredEnquiries?.map((enquiry: any) => (
+                        enquiries?.map((enquiry: any) => (
                           <TableRow key={enquiry.id} className="hover:bg-slate-50/50 transition-colors">
                             <TableCell>
                               <div className="flex flex-col">
@@ -193,6 +273,89 @@ const AdminManageEnquiry = () => {
                 </div>
               )}
             </CardContent>
+
+            {!isLoading && (
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t bg-white px-6 py-4">
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <span>Rows per page</span>
+                  <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                    <SelectTrigger className="w-[80px] h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="ml-2">
+                    {pagination.total === 0
+                      ? '0 results'
+                      : `${(pagination.page - 1) * pagination.pageSize + 1}-${Math.min(pagination.page * pagination.pageSize, pagination.total)} of ${pagination.total}`}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <Pagination className="mx-0 w-auto">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (page > 1) setPage(page - 1);
+                          }}
+                          className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                      {getPageNumbers().map((p) => (
+                        <PaginationItem key={p}>
+                          <PaginationLink
+                            href="#"
+                            isActive={p === page}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPage(p);
+                            }}
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (page < pagination.totalPages) setPage(page + 1);
+                          }}
+                          className={page >= pagination.totalPages ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-500 whitespace-nowrap">Go to</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={pagination.totalPages}
+                      value={jumpToPage}
+                      onChange={(e) => setJumpToPage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleJumpToPage();
+                      }}
+                      className="w-16 h-9"
+                      placeholder={String(page)}
+                    />
+                    <Button variant="outline" size="sm" className="h-9" onClick={handleJumpToPage}>
+                      Go
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       </main>

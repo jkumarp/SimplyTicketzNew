@@ -1,13 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -35,6 +43,8 @@ import {
 
 import { API_URL } from "@/config";
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
 const Merchants = () => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,6 +52,9 @@ const Merchants = () => {
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isResolvingDoc, setIsResolvingDoc] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [jumpToPage, setJumpToPage] = useState("");
 
   const [formData, setFormData] = useState({
     organization_sw: true,
@@ -82,17 +95,50 @@ const Merchants = () => {
   });
 
 
-  const { data: merchants, isLoading: isLoadingMerchants } = useQuery({
-    queryKey: ['merchants'],
+  // Server-side paginated for the Merchant Directory grid below.
+  const { data: merchantsResponse, isLoading: isLoadingMerchants, isFetching: isFetchingMerchants } = useQuery({
+    queryKey: ['merchants', page, pageSize],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/merchants`, {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      const res = await fetch(`${API_URL}/merchants?${params.toString()}`, {
         headers: { ...getAuthHeader() }
       });
       if (!res.ok) throw new Error('Failed to fetch merchants');
-      const json = await res.json();
-      return json.data;
-    }
+      return res.json();
+    },
+    placeholderData: keepPreviousData,
   });
+
+  const merchants = merchantsResponse?.data ?? [];
+  const pagination = merchantsResponse?.pagination ?? { page: 1, pageSize, total: 0, totalPages: 1 };
+
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setPage(1);
+  };
+
+  const handleJumpToPage = () => {
+    const target = parseInt(jumpToPage, 10);
+    if (!Number.isNaN(target) && target >= 1 && target <= pagination.totalPages) {
+      setPage(target);
+    }
+    setJumpToPage("");
+  };
+
+  // Compute a small window of page numbers to display (max 4 visible)
+  const getPageNumbers = () => {
+    const totalPages = pagination.totalPages;
+    const windowSize = 4;
+    let start = Math.max(1, page - Math.floor(windowSize / 2));
+    const end = Math.min(totalPages, start + windowSize - 1);
+    start = Math.max(1, end - windowSize + 1);
+    const pages = [];
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
 
   const { data: countries } = useQuery({
     queryKey: ['countries'],
@@ -320,7 +366,7 @@ const Merchants = () => {
       { key: 'pan', label: 'PAN Card Certificate', path: merchant.pan_docid },
       { key: 'aadhaar', label: 'Aadhaar Card Reference', path: merchant.aadhaar_docid },
       { key: 'gstn', label: 'GSTN Registration Document', path: merchant.gstn_docid },
-      { key: 'sin', label: 'SIN Document', path: merchant.sin_docid },
+      { key: 'sin', label: 'CIN Document', path: merchant.sin_docid },
       { key: 'tin', label: 'TIN Document', path: merchant.tin_docid },
       { key: 'moa', label: 'Memorandum of Association (MOA)', path: merchant.moa_docid },
       { key: 'aoa', label: 'Articles of Association (AOA)', path: merchant.aoa_docid },
@@ -487,7 +533,7 @@ const Merchants = () => {
                       {formData.organization_sw && (
                         <>
                           <div className="space-y-2">
-                            <Label>SIN Number</Label>
+                            <Label>CIN Number</Label>
                             <Input 
                               value={formData.sin_number}
                               onChange={(e) => setFormData({...formData, sin_number: e.target.value})}
@@ -652,7 +698,7 @@ const Merchants = () => {
                   </CardHeader>
                   <CardContent className="pt-6 space-y-6">
                     <div className="space-y-2">
-                      <Label>SIN Document</Label>
+                      <Label>CIN Document</Label>
                       <Input type="file" onChange={(e) => handleFileChange(e, 'sin')} />
                     </div>
                     <div className="space-y-2">
@@ -704,11 +750,16 @@ const Merchants = () => {
               <CardTitle>Merchant Directory</CardTitle>
               <CardDescription>Manage registered event organizers and their verification status</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {isLoadingMerchants ? (
                 <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-600" /></div>
               ) : (
-                <div className="rounded-xl border overflow-hidden">
+                <div className="rounded-xl border overflow-hidden relative m-6">
+                  {isFetchingMerchants && (
+                    <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+                      <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+                    </div>
+                  )}
                   <Table>
                     <TableHeader className="bg-slate-50">
                       <TableRow>
@@ -793,6 +844,89 @@ const Merchants = () => {
                 </div>
               )}
             </CardContent>
+
+            {!isLoadingMerchants && (
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t bg-white px-6 py-4">
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <span>Rows per page</span>
+                  <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                    <SelectTrigger className="w-[80px] h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="ml-2">
+                    {pagination.total === 0
+                      ? '0 results'
+                      : `${(pagination.page - 1) * pagination.pageSize + 1}-${Math.min(pagination.page * pagination.pageSize, pagination.total)} of ${pagination.total}`}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <Pagination className="mx-0 w-auto">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (page > 1) setPage(page - 1);
+                          }}
+                          className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                      {getPageNumbers().map((p) => (
+                        <PaginationItem key={p}>
+                          <PaginationLink
+                            href="#"
+                            isActive={p === page}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPage(p);
+                            }}
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (page < pagination.totalPages) setPage(page + 1);
+                          }}
+                          className={page >= pagination.totalPages ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-500 whitespace-nowrap">Go to</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={pagination.totalPages}
+                      value={jumpToPage}
+                      onChange={(e) => setJumpToPage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleJumpToPage();
+                      }}
+                      className="w-16 h-9"
+                      placeholder={String(page)}
+                    />
+                    <Button variant="outline" size="sm" className="h-9" onClick={handleJumpToPage}>
+                      Go
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       </main>

@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase.ts';
+import { logControllerError } from '../services/loggerService';
 
 export const getInvoices = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { merchantId, ticketId } = req.query;
+    const { merchantId, invoiceId } = req.query;
     let query = supabase
       .schema('transaction')
       .from('invoice')
@@ -12,8 +13,8 @@ export const getInvoices = async (req: Request, res: Response): Promise<void> =>
     if (merchantId) {
       query = query.eq('merchant_id', merchantId);
     }
-    if (ticketId) {
-      query = query.eq('ticket_id', ticketId);
+    if (invoiceId) {
+      query = query.eq('id', invoiceId);
     }
 
     const { data, error } = await query;
@@ -28,6 +29,7 @@ export const getInvoices = async (req: Request, res: Response): Promise<void> =>
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, 'InvoiceController', 'getInvoices');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -49,9 +51,9 @@ export const createInvoice = async (req: Request, res: Response): Promise<void> 
       igst,
       discount_value,
       grand_total,
-      update_by,
       discount_percentage
     } = req.body;
+    const update_by = (req as any).user?.user_id;
 
     const { data, error } = await supabase
       .schema('transaction')
@@ -87,6 +89,7 @@ export const createInvoice = async (req: Request, res: Response): Promise<void> 
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'InvoiceController', 'createInvoice');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

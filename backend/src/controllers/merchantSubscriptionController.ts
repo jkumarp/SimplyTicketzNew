@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase.ts';
+import { logControllerError } from '../services/loggerService';
 
 export const createMerchantSubscription = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -17,9 +18,9 @@ export const createMerchantSubscription = async (req: Request, res: Response): P
       allowed_staff_login,
       convinience_fee,
       ticket_refund_sw,
-      update_by,
       status_sw
     } = req.body;
+    const update_by = (req as any).user?.user_id;
 
     const { data, error } = await supabase
       .schema('master')
@@ -54,6 +55,7 @@ export const createMerchantSubscription = async (req: Request, res: Response): P
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantSubscriptionController', 'createMerchantSubscription');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -68,6 +70,7 @@ export const updateMerchantSubscription = async (req: Request, res: Response): P
       .from('merchant_subscription')
       .update({
         ...updateData,
+        update_by: (req as any).user?.user_id,
         update_date: new Date().toISOString()
       })
       .eq('id', id)
@@ -83,6 +86,7 @@ export const updateMerchantSubscription = async (req: Request, res: Response): P
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantSubscriptionController', 'updateMerchantSubscription');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -111,6 +115,7 @@ export const getMerchantSubscriptions = async (req: Request, res: Response): Pro
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantSubscriptionController', 'getMerchantSubscriptions');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -139,6 +144,7 @@ export const getActiveMerchantSubscriptions = async (req: Request, res: Response
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantSubscriptionController', 'getActiveMerchantSubscriptions');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

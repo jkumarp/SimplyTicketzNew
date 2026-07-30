@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { supabase } from "../config/supabase.ts";
+import { logControllerError } from "../services/loggerService";
 
 export const getTicketDetails = async (
   req: Request,
@@ -28,6 +29,7 @@ export const getTicketDetails = async (
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, "TicketDetailController", "getTicketDetails");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -117,6 +119,7 @@ export const getTicketDetailByMerchantId = async (
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, "TicketDetailController", "getTicketDetailByMerchantId");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -135,8 +138,8 @@ export const createTicketDetail = async (
       scanned_time,
       adult_count,
       child_count,
-      update_by,
     } = req.body;
+    const update_by = (req as any).user?.user_id;
 
     const { data, error } = await supabase
       .schema("transaction")
@@ -165,6 +168,7 @@ export const createTicketDetail = async (
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, "TicketDetailController", "createTicketDetail");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -182,6 +186,7 @@ export const updateTicketDetail = async (
       .from("ticket_detail")
       .update({
         ...updateData,
+        update_by: (req as any).user?.user_id,
         update_date: new Date().toISOString(),
       })
       .eq("id", id)
@@ -197,6 +202,7 @@ export const updateTicketDetail = async (
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, "TicketDetailController", "updateTicketDetail");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };

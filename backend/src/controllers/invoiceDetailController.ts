@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { supabase } from "../config/supabase.ts";
+import { logControllerError } from "../services/loggerService";
 
 export const getInvoiceDetails = async (
   req: Request,
@@ -31,6 +32,7 @@ export const getInvoiceDetails = async (
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, "InvoiceDetailController", "getInvoiceDetails");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -123,6 +125,7 @@ export const getInvoiceDetailByMerchantId = async (
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, "InvoiceDetailController", "getInvoiceDetailByMerchantId");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -141,8 +144,8 @@ export const createInvoiceDetail = async (
       adult_count,
       child_count,
       total_amount,
-      update_by,
     } = req.body;
+    const update_by = (req as any).user?.user_id;
 
     const { data, error } = await supabase
       .schema("transaction")
@@ -171,6 +174,7 @@ export const createInvoiceDetail = async (
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, "InvoiceDetailController", "createInvoiceDetail");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };

@@ -1,15 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
-import { RateLimiter } from './ratelimiter';
+import { RateLimiter } from './rateLimiter';
 
 export const apiRateLimiter = () => {
   const windowSeconds = Number(process.env.REDIS_SECONDS||10);
-  const maxRequests = Number(process.env.REDIS_COUNT||5);
+  const maxRequests = Number(process.env.REDIS_COUNT||50);
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // Identify by logged-in user ID, or fall back to their IP address
     const identifier = (req as any).user?.user_id || req.ip || 'anonymous';
 
+    // Scope the bucket to this specific route (method + matched route pattern,
+    // e.g. "GET:/invoices") rather than sharing one global counter across
+    // every endpoint. Previously a single page that fired several sequential
+    // calls to different endpoints (tickets-by-invoiceId, merchant-services,
+    // ticket-categories, ...) could exhaust the whole quota before its own
+    // request even ran, causing unrelated routes to 429 each other out.
+    const routeKey = `${req.method}:${req.baseUrl}${req.route?.path || req.path}`;
+    const scopedIdentifier = `${identifier}:${routeKey}`;
+
     try {
-      const { allowed, currentCount, remaining } = await RateLimiter.isAllowed(identifier, {
+      const { allowed, currentCount, remaining } = await RateLimiter.isAllowed(scopedIdentifier, {
         windowSizeInSeconds: windowSeconds,
         maxRequests: maxRequests
       });

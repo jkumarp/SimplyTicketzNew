@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase.ts';
+import { logControllerError } from '../services/loggerService';
 
 export const createTicketCategory = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -14,9 +15,9 @@ export const createTicketCategory = async (req: Request, res: Response): Promise
       adult_price,
       child_price,
       special_instruction,
-      update_by,
       status_sw
     } = req.body;
+    const update_by = (req as any).user?.user_id;
 
     const { data, error } = await supabase
       .schema('master')
@@ -48,6 +49,7 @@ export const createTicketCategory = async (req: Request, res: Response): Promise
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'TicketCategoryController', 'createTicketCategory');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -62,6 +64,7 @@ export const updateTicketCategory = async (req: Request, res: Response): Promise
       .from('ticket_category')
       .update({
         ...updateData,
+        update_by: (req as any).user?.user_id,
         update_date: new Date().toISOString()
       })
       .eq('id', id)
@@ -77,6 +80,7 @@ export const updateTicketCategory = async (req: Request, res: Response): Promise
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'TicketCategoryController', 'updateTicketCategory');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -102,6 +106,7 @@ export const getTicketCategories = async (req: Request, res: Response): Promise<
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, 'TicketCategoryController', 'getTicketCategories');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

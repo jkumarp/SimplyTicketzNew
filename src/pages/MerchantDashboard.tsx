@@ -75,9 +75,14 @@ const MerchantDashboard = () => {
       start.setMonth(start.getMonth() - 1);
     }
 
+    // Backend's byMerchantSchema validates startDate/endDate against
+    // /^\d{4}-\d{2}-\d{2}$/ (plain date, no time component) since they're
+    // compared directly against the "booking_date" date column. Sending the
+    // full toISOString() timestamp (e.g. "2026-07-21T00:00:00.000Z") fails
+    // that regex and the request comes back 400 Bad Request.
     return {
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
+      startDate: start.toISOString().split("T")[0],
+      endDate: end.toISOString().split("T")[0],
     };
   }, [dateFilter]);
 

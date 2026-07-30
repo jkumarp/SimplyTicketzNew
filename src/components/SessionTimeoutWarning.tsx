@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { getSessionExpiry, getAuthHeader } from "@/utils/common";
 import { API_URL } from "@/config";
 import { showSuccess, showError } from "@/utils/toast";
-import * as jose from "jose";
 import { AlertCircle, Clock, Loader2 } from "lucide-react";
 
 const SessionTimeoutWarning = () => {
@@ -22,6 +21,10 @@ const SessionTimeoutWarning = () => {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
+  // Tracks whether the user explicitly dismissed the warning (X button /
+  // Escape) so the interval below doesn't force it back open every tick.
+  // Reset whenever the session is extended past the warning window.
+  const dismissedRef = useRef(false);
 
   useEffect(() => {
     const checkInterval = setInterval(() => {
@@ -49,8 +52,13 @@ const SessionTimeoutWarning = () => {
       // Show warning popup in the last 5 minutes (300 seconds)
       if (remainingSeconds <= 300) {
         setTimeLeft(remainingSeconds);
-        setIsOpen(true);
+        if (!dismissedRef.current) {
+          setIsOpen(true);
+        }
       } else {
+        // Session is healthy again (e.g. just refreshed) - clear the
+        // dismissal so the warning can show again next time it's due.
+        dismissedRef.current = false;
         setIsOpen(false);
       }
     }, 1000);
@@ -72,26 +80,15 @@ const SessionTimeoutWarning = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Token refresh failed");
 
-      // Set refreshed token
+      // Set refreshed token. The backend returns the decoded user payload
+      // alongside it, so we never need to decrypt/verify the JWE/JWT
+      // ourselves - doing that client-side would require shipping the
+      // JWT/JWE secrets to the browser, letting anyone forge a session.
       sessionStorage.setItem("token", data.token);
-
-      const jweSecret = new TextEncoder().encode(
-        import.meta.env.VITE_JWE_SECRET
-      );
-      const jwtSecret = new TextEncoder().encode(
-        import.meta.env.VITE_JWT_SECRET
-      );
-      const { plaintext } = await jose.compactDecrypt(data.token, jweSecret);
-      const tokenData = new TextDecoder().decode(plaintext);
-
-      const { payload } = await jose.jwtVerify(tokenData, jwtSecret, {
-        issuer: "simplyticketz",
-        audience: "merchant-portal",
-      });
-
-      sessionStorage.setItem("user", JSON.stringify(payload));
+      sessionStorage.setItem("user", JSON.stringify(data.user));
       window.dispatchEvent(new Event("storage"));
-      
+
+      dismissedRef.current = false;
       setIsOpen(false);
       showSuccess("Session extended successfully!");
     } catch (err: any) {
@@ -117,7 +114,13 @@ const SessionTimeoutWarning = () => {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (!open) dismissedRef.current = true;
+      }}
+    >
       <DialogContent className="sm:max-w-[400px] rounded-3xl p-6" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader className="flex flex-col items-center justify-center text-center space-y-3">
           <div className="bg-amber-100 p-3 rounded-full text-amber-600 animate-pulse">

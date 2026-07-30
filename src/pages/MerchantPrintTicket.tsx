@@ -8,11 +8,13 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {getMerchantId, getUserId, getUserEmail, getAuthHeader} from "@/utils/common";
 import {
   ArrowLeft,
   Calendar,
   Clock,
+  Download,
   Loader2,
   MapPin,
   Printer,
@@ -26,6 +28,12 @@ const MerchantPrintTicket = () => {
   const { ticketId } = useParams(); // Note: ticketId parameter is actually the Invoice ID passed here
   const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
+  // Controls which printable section is visible when window.print() fires -
+  // the tickets grid or the invoice. Only the matching section renders
+  // on-screen/print; everything else is print:hidden. Buttons themselves are
+  // hidden in @media print below, so the browser's print/Save-as-PDF dialog
+  // only ever shows the section the user asked for.
+  const [printTarget, setPrintTarget] = useState<"tickets" | "invoice">("tickets");
 
   const { data: ticketData, isLoading } = useQuery({
     queryKey: ["ticket-full", ticketId],
@@ -83,8 +91,12 @@ const MerchantPrintTicket = () => {
         });
       }
 
-      // 6. Fetch invoice context for customer details
-      const invRes = await fetch(`${API_URL}/invoices?ticketId=${sampleTicket.id}`, {
+      // 6. Fetch invoice context for customer details.
+      // `ticketId` (the route param) is actually the invoice id - see the
+      // note at the top of this component - and the invoice table has no
+      // ticket_id column to filter by (tickets reference their invoice via
+      // ticket.invoice_id, not the reverse), so look it up by its own id.
+      const invRes = await fetch(`${API_URL}/invoices?invoiceId=${ticketId}`, {
         headers: getAuthHeader(),
       });
       const invoices = (await invRes.json()).data || [];
@@ -95,8 +107,16 @@ const MerchantPrintTicket = () => {
     enabled: !!ticketId,
   });
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrintTickets = () => {
+    setPrintTarget("tickets");
+    // Give React a tick to re-render with the "tickets" section visible
+    // before the browser snapshots the page for printing.
+    setTimeout(() => window.print(), 50);
+  };
+
+  const handleDownloadInvoice = () => {
+    setPrintTarget("invoice");
+    setTimeout(() => window.print(), 50);
   };
 
   if (isLoading) {
@@ -112,6 +132,44 @@ const MerchantPrintTicket = () => {
   }
 
   const { tickets, details, service, categories, timeslots, invoice } = ticketData;
+
+  // Online self-service bookings are created PENDING and only flipped to
+  // CONFIRMED once paymentController confirms the gateway payment succeeded
+  // (see backend bookTicket + CustomerTicketBooking.tsx). Staff-assisted
+  // bookings are CONFIRMED immediately, so this only ever blocks an unpaid
+  // online booking someone tries to reach directly - tickets must never be
+  // downloadable/printable before payment is confirmed.
+  const allConfirmed = tickets.length > 0 && tickets.every((t: any) => t.status === "CONFIRMED");
+
+  if (!allConfirmed) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center px-4">
+          <Card className="max-w-md w-full border-2 border-amber-200">
+            <CardContent className="p-8 text-center space-y-3">
+              <h1 className="text-xl font-bold text-slate-900">
+                Tickets Not Available Yet
+              </h1>
+              <p className="text-sm text-slate-500">
+                This booking's payment hasn't been confirmed yet, so its
+                tickets can't be downloaded or printed. If you just paid,
+                please wait a moment and try again.
+              </p>
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => navigate(`/payment-result/${ticketId}`)}
+              >
+                Check Payment Status
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   // Generate individual tickets for each person
   const individualTickets: any[] = [];
@@ -177,6 +235,39 @@ const MerchantPrintTicket = () => {
     }
   });
 
+  // Group ticket details by category for the invoice line items (one row
+  // per category rather than one row per individual ticket).
+  const invoiceItems: { category: any; adult: number; child: number }[] = [];
+  {
+    const grouped: Record<string, { category: any; adult: number; child: number }> = {};
+    details.forEach((detail: any) => {
+      const category = categories.find((c: any) => c.id === detail.ticket_category_id);
+      if (!category) return;
+      const key = category.id.toString();
+      if (!grouped[key]) grouped[key] = { category, adult: 0, child: 0 };
+      grouped[key].adult += detail.adult_count || 0;
+      grouped[key].child += detail.child_count || 0;
+    });
+    invoiceItems.push(...Object.values(grouped));
+  }
+
+  // invoice.sgst/cgst/igst store the tax rate (%) copied from the service at
+  // booking time (see backend bookTicket), not a pre-computed amount, so the
+  // amounts are derived here the same way the booking page derives them.
+  const isHomeState = service?.state === 1 || service?.state === "1";
+  const invSubtotal = invoice?.total_amount ? parseFloat(invoice.total_amount) : 0;
+  const invDiscountValue = invoice?.discount_value ? parseFloat(invoice.discount_value) : 0;
+  const invDiscountedSubtotal = Math.max(0, invSubtotal - invDiscountValue);
+  const sgstPct = invoice?.sgst ? parseFloat(invoice.sgst) : 0;
+  const cgstPct = invoice?.cgst ? parseFloat(invoice.cgst) : 0;
+  const igstPct = invoice?.igst ? parseFloat(invoice.igst) : 0;
+  const sgstAmount = isHomeState ? (invDiscountedSubtotal * sgstPct) / 100 : 0;
+  const cgstAmount = isHomeState ? (invDiscountedSubtotal * cgstPct) / 100 : 0;
+  const igstAmount = !isHomeState ? (invDiscountedSubtotal * igstPct) / 100 : 0;
+  const invGrandTotal = invoice?.grand_total
+    ? parseFloat(invoice.grand_total)
+    : invDiscountedSubtotal + sgstAmount + cgstAmount + igstAmount;
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
@@ -197,15 +288,27 @@ const MerchantPrintTicket = () => {
                 Print Tickets
               </h1>
             </div>
-            <Button
-              onClick={handlePrint}
-              className="bg-indigo-600 hover:bg-indigo-700 gap-2 h-12 px-6 rounded-xl shadow-lg"
-            >
-              <Printer className="h-5 w-5" /> Print All Tickets
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={handleDownloadInvoice}
+                variant="outline"
+                className="border-indigo-200 text-indigo-600 hover:bg-indigo-50 gap-2 h-12 px-6 rounded-xl shadow-sm"
+              >
+                <Download className="h-5 w-5" /> Download Invoice
+              </Button>
+              <Button
+                onClick={handlePrintTickets}
+                className="bg-indigo-600 hover:bg-indigo-700 gap-2 h-12 px-6 rounded-xl shadow-lg"
+              >
+                <Printer className="h-5 w-5" /> Print All Tickets
+              </Button>
+            </div>
           </div>
 
-          <div ref={printRef} className="space-y-8 print:space-y-0">
+          <div
+            ref={printRef}
+            className={cn("space-y-8 print:space-y-0", printTarget === "invoice" && "print:hidden")}
+          >
             {individualTickets.map((t, idx) => {
               const selectedTs = timeslots.find((ts: any) =>
                 ts.id.toString() === t.timeslotId
@@ -317,6 +420,127 @@ const MerchantPrintTicket = () => {
                 </Card>
               );
             })}
+          </div>
+
+          {/* Invoice-only printable view - hidden on screen, only shown
+              (via print:block) when "Download Invoice" triggers window.print() */}
+          <div className={cn("hidden", printTarget === "invoice" && "print:block")}>
+            <Card className="border-2 border-slate-200 shadow-none print:border-slate-300 print:shadow-none">
+              <CardContent className="p-8 space-y-8">
+                <div className="flex justify-between items-start pb-6 border-b border-dashed">
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+                      Tax Invoice
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">{service.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {[service.addressline1, service.addressline2, service.state].filter(Boolean).join(", ")}
+                      {service.pincode ? ` - ${service.pincode}` : ""}
+                    </p>
+                    {invoice?.gstin && (
+                      <p className="text-xs text-slate-500 mt-1">GSTIN: {invoice.gstin}</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Invoice Number</p>
+                    <p className="font-mono font-bold text-slate-900">{invoice?.invoice_number || "-"}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">Date</p>
+                    <p className="font-bold text-slate-900">
+                      {invoice?.transaction_date ? invoice.transaction_date.split("T")[0] : "-"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Billed To</p>
+                    <p className="font-bold text-slate-900">{invoice?.customer_name || "Walk-in Guest"}</p>
+                    {invoice?.customer_phone && (
+                      <p className="text-sm text-slate-600">
+                        {invoice?.customer_phone_code ? `+${invoice.customer_phone_code} ` : ""}
+                        {invoice.customer_phone}
+                      </p>
+                    )}
+                    {invoice?.email && <p className="text-sm text-slate-600">{invoice.email}</p>}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Payment Mode</p>
+                    <p className="font-bold text-slate-900">{invoice?.payment_mode || "-"}</p>
+                  </div>
+                </div>
+
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b-2 border-slate-200 text-left">
+                      <th className="py-2 font-bold text-slate-700">Category</th>
+                      <th className="py-2 font-bold text-slate-700 text-right">Adult</th>
+                      <th className="py-2 font-bold text-slate-700 text-right">Child</th>
+                      <th className="py-2 font-bold text-slate-700 text-right">Line Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoiceItems.map(({ category, adult, child }) => {
+                      const lineTotal =
+                        adult * parseFloat(category.adult_price) +
+                        child * parseFloat(category.child_price || "0");
+                      return (
+                        <tr key={category.id} className="border-b border-slate-100">
+                          <td className="py-2 font-semibold text-slate-800">{category.name}</td>
+                          <td className="py-2 text-right text-slate-600">
+                            {adult > 0 ? `${adult} x ₹${parseFloat(category.adult_price).toFixed(2)}` : "-"}
+                          </td>
+                          <td className="py-2 text-right text-slate-600">
+                            {child > 0 ? `${child} x ₹${parseFloat(category.child_price || "0").toFixed(2)}` : "-"}
+                          </td>
+                          <td className="py-2 text-right font-bold text-slate-900">₹{lineTotal.toFixed(2)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                <div className="flex justify-end">
+                  <div className="w-full max-w-xs space-y-2 text-sm">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Subtotal</span>
+                      <span className="font-semibold text-slate-900">₹{invSubtotal.toFixed(2)}</span>
+                    </div>
+                    {invDiscountValue > 0 && (
+                      <div className="flex justify-between text-emerald-600">
+                        <span>Discount {invoice?.discount_percentage ? `(${invoice.discount_percentage}%)` : ""}</span>
+                        <span className="font-semibold">-₹{invDiscountValue.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {sgstAmount > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>SGST ({sgstPct}%)</span>
+                        <span className="font-semibold text-slate-900">₹{sgstAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {cgstAmount > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>CGST ({cgstPct}%)</span>
+                        <span className="font-semibold text-slate-900">₹{cgstAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {igstAmount > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>IGST ({igstPct}%)</span>
+                        <span className="font-semibold text-slate-900">₹{igstAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-2 border-t-2 border-slate-200 text-base font-black text-slate-900">
+                      <span>Grand Total</span>
+                      <span>₹{invGrandTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-400 italic pt-4 border-t border-dashed">
+                  This is a system-generated invoice and does not require a signature.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>

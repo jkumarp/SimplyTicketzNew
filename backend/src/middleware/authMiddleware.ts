@@ -30,7 +30,6 @@ export const authorizeRoles = (...roles: number[]) => {
       });
       const verified = payload as JwtPayload;
       //const payload = JSON.parse(new TextDecoder().decode(plaintext));
-      global.userid = verified.user_id;
 
       if (!roles.includes(parseInt(verified.role))) {
         res.status(403).json({ error: "Forbidden: Insufficient permissions" });

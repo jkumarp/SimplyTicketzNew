@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { supabase } from "../config/supabase.ts";
+import { logControllerError } from "../services/loggerService";
 
 /**
  * Retrieve merchant service users with optional filtering by merchant, service, or user ID
@@ -9,11 +10,20 @@ export const getMerchantServiceUsers = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { merchantId, serviceId, userId } = req.query;
+    const { merchantId, serviceId, userId, page, pageSize } = req.query;
+
+    const pageNum = Math.max(parseInt(String(page ?? "1"), 10) || 1, 1);
+    const pageSizeNum = Math.min(
+      Math.max(parseInt(String(pageSize ?? "10"), 10) || 10, 1),
+      100,
+    );
+    const from = (pageNum - 1) * pageSizeNum;
+    const to = from + pageSizeNum - 1;
+
     let query = supabase
       .schema("master")
       .from("merchant_service_users")
-      .select("*");
+      .select("*", { count: "exact" });
 
     if (merchantId) {
       query = query.eq("merchant_id", merchantId);
@@ -25,18 +35,29 @@ export const getMerchantServiceUsers = async (
       query = query.eq("user_id", userId);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query
+      .order("id", { ascending: false })
+      .range(from, to);
 
     if (error) {
       res.status(400).json({ error: error.message });
       return;
     }
 
+    const total = count ?? 0;
+
     res.status(200).json({
       success: true,
       data,
+      pagination: {
+        page: pageNum,
+        pageSize: pageSizeNum,
+        total,
+        totalPages: Math.max(Math.ceil(total / pageSizeNum), 1),
+      },
     });
   } catch (err) {
+    await logControllerError(req, err, "MerchantServiceUserController", "getMerchantServiceUsers");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -49,8 +70,8 @@ export const createMerchantServiceUser = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { merchant_id, service_id, user_id, status_sw, updated_by } =
-      req.body;
+    const { merchant_id, service_id, user_id, status_sw } = req.body;
+    const updated_by = (req as any).user?.user_id;
 
     let query = supabase
       .schema("master")
@@ -102,6 +123,7 @@ export const createMerchantServiceUser = async (
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, "MerchantServiceUserController", "createMerchantServiceUser");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -122,6 +144,7 @@ export const updateMerchantServiceUser = async (
       .from("merchant_service_users")
       .update({
         ...updateData,
+        updated_by: (req as any).user?.user_id,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -137,6 +160,7 @@ export const updateMerchantServiceUser = async (
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, "MerchantServiceUserController", "updateMerchantServiceUser");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -167,6 +191,7 @@ export const deleteMerchantServiceUser = async (
       message: "Merchant service user mapping deleted successfully",
     });
   } catch (err) {
+    await logControllerError(req, err, "MerchantServiceUserController", "deleteMerchantServiceUser");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };

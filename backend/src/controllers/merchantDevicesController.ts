@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase.ts';
+import { logControllerError } from '../services/loggerService';
 
 export const getMerchantDevices = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -25,6 +26,7 @@ export const getMerchantDevices = async (req: Request, res: Response): Promise<v
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantDevicesController', 'getMerchantDevices');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -37,9 +39,9 @@ export const createMerchantDevice = async (req: Request, res: Response): Promise
       merchant_service_id,
       phone,
       publisher_id,
-      update_by,
       status_sw
     } = req.body;
+    const update_by = (req as any).user?.user_id;
 
     const { data, error } = await supabase
       .schema('master')
@@ -66,6 +68,7 @@ export const createMerchantDevice = async (req: Request, res: Response): Promise
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantDevicesController', 'createMerchantDevice');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -80,6 +83,7 @@ export const updateMerchantDevice = async (req: Request, res: Response): Promise
       .from('merchant_device')
       .update({
         ...updateData,
+        update_by: (req as any).user?.user_id,
         update_date: new Date().toISOString()
       })
       .eq('id', id)
@@ -95,6 +99,7 @@ export const updateMerchantDevice = async (req: Request, res: Response): Promise
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantDevicesController', 'updateMerchantDevice');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

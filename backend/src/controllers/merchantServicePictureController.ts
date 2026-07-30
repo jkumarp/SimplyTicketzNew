@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase.ts';
+import { logControllerError } from '../services/loggerService';
 
 /**
  * Uploads a picture to the 'merchant_service_picture' Supabase bucket.
@@ -34,6 +35,7 @@ export const uploadServicePicture = async (req: Request, res: Response): Promise
       data: { path: data.path }
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantServicePictureController', 'uploadServicePicture');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -63,6 +65,7 @@ export const getPictureUrl = async (req: Request, res: Response): Promise<void> 
       data: data.signedUrl
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantServicePictureController', 'getPictureUrl');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -87,6 +90,7 @@ export const getMerchantServicePictures = async (req: Request, res: Response): P
       data,
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantServicePictureController', 'getMerchantServicePictures');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -118,6 +122,7 @@ export const createMerchantServicePicture = async (req: Request, res: Response):
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantServicePictureController', 'createMerchantServicePicture');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -147,6 +152,7 @@ export const updateMerchantServicePicture = async (req: Request, res: Response):
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantServicePictureController', 'updateMerchantServicePicture');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -185,6 +191,7 @@ export const deleteMerchantServicePicture = async (req: Request, res: Response):
       message: 'Picture record and file deleted successfully',
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantServicePictureController', 'deleteMerchantServicePicture');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

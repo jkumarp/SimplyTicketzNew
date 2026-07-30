@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Link } from 'react-router-dom';
 import { API_URL } from "@/config";
 import { getAuthHeader} from "@/utils/common";
-import { 
-  Users, Store, Ticket, TrendingUp, 
+import {
+  Users, Store, Ticket, TrendingUp,
   AlertCircle, ArrowRight,
-  BarChart3, Activity, MessageSquare
+  BarChart3, Activity, MessageSquare, CreditCard
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -134,6 +134,18 @@ const AdminDashboard = () => {
                     </div>
                     <h4 className="font-bold text-slate-900">Merchant Enquiries</h4>
                     <p className="text-sm text-slate-500 mt-1">Review and respond to partnership requests.</p>
+                  </div>
+                </Link>
+                <Link to="/admin/pg-mappings">
+                  <div className="group p-6 rounded-2xl border border-slate-100 bg-white hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="bg-emerald-50 p-3 rounded-xl text-emerald-600">
+                        <CreditCard className="h-6 w-6" />
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                    </div>
+                    <h4 className="font-bold text-slate-900">Payment Gateways</h4>
+                    <p className="text-sm text-slate-500 mt-1">Map merchants to payment gateways and routing rules.</p>
                   </div>
                 </Link>
               </CardContent>

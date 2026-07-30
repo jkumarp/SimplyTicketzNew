@@ -41,9 +41,26 @@ const updateVoucherSchema = z.object({
   })
 });
 
-router.get('/merchant-service-vouchers', authorizeRoles(1, 2, 3, 4, 5),apiRateLimiter(), getMerchantServiceVouchers);
+const getVouchersSchema = z.object({
+  query: z.object({
+    merchantId: z.string().optional(),
+    serviceId: z.string().optional(),
+    page: z.string().optional(),
+    pageSize: z.string().optional(),
+  }),
+});
+
+const validateVoucherSchema = z.object({
+  query: z.object({
+    merchantId: z.string().optional(),
+    serviceId: z.string().optional(),
+    voucherCode: z.string().min(1, 'voucherCode is required'),
+  }),
+});
+
+router.get('/merchant-service-vouchers', authorizeRoles(1, 2, 3, 4, 5), validate(getVouchersSchema),apiRateLimiter(), getMerchantServiceVouchers);
 router.post('/merchant-service-vouchers', authorizeRoles(1, 2, 3, 4, 5), validate(createVoucherSchema),apiRateLimiter(), createMerchantServiceVoucher);
 router.put('/merchant-service-vouchers/:id', authorizeRoles(1, 2, 3, 4, 5), validate(updateVoucherSchema),apiRateLimiter(), updateMerchantServiceVoucher);
-router.get('/validate-merchant-service-voucher', authorizeRoles(1, 2, 3, 4, 5, 6, 7),apiRateLimiter(), validateMerchantServiceVouchers);
+router.get('/validate-merchant-service-voucher', authorizeRoles(1, 2, 3, 4, 5, 6, 7), validate(validateVoucherSchema),apiRateLimiter(), validateMerchantServiceVouchers);
 
 export default router;

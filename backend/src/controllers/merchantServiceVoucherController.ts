@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase.ts';
+import { logControllerError } from '../services/loggerService';
 
 /**
  * Create a new merchant service voucher
@@ -14,8 +15,8 @@ export const createMerchantServiceVoucher = async (req: Request, res: Response):
       start_date,
       end_date,
       status_sw,
-      updated_by
     } = req.body;
+    const updated_by = (req as any).user?.user_id;
 
     const { data, error } = await supabase
       .schema('master')
@@ -43,6 +44,7 @@ export const createMerchantServiceVoucher = async (req: Request, res: Response):
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantServiceVoucherController', 'createMerchantServiceVoucher');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -52,9 +54,21 @@ export const createMerchantServiceVoucher = async (req: Request, res: Response):
  */
 export const getMerchantServiceVouchers = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { merchantId, serviceId } = req.query;
-    let query = supabase.schema('master').from('merchant_service_voucher').select('*');
-    
+    const { merchantId, serviceId, page, pageSize } = req.query;
+
+    const pageNum = Math.max(parseInt(String(page ?? '1'), 10) || 1, 1);
+    const pageSizeNum = Math.min(
+      Math.max(parseInt(String(pageSize ?? '10'), 10) || 10, 1),
+      100,
+    );
+    const from = (pageNum - 1) * pageSizeNum;
+    const to = from + pageSizeNum - 1;
+
+    let query = supabase
+      .schema('master')
+      .from('merchant_service_voucher')
+      .select('*', { count: 'exact' });
+
     if (merchantId) {
       query = query.eq('merchant_id', merchantId);
     }
@@ -62,18 +76,29 @@ export const getMerchantServiceVouchers = async (req: Request, res: Response): P
       query = query.eq('service_id', serviceId);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query
+      .order('id', { ascending: false })
+      .range(from, to);
 
     if (error) {
       res.status(400).json({ error: error.message });
       return;
     }
 
+    const total = count ?? 0;
+
     res.status(200).json({
       success: true,
       data,
+      pagination: {
+        page: pageNum,
+        pageSize: pageSizeNum,
+        total,
+        totalPages: Math.max(Math.ceil(total / pageSizeNum), 1),
+      },
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantServiceVoucherController', 'getMerchantServiceVouchers');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -113,6 +138,7 @@ export const validateMerchantServiceVouchers = async (req: Request, res: Respons
       data:voucherData?.percentage ?? 0,
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantServiceVoucherController', 'validateMerchantServiceVouchers');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -130,6 +156,7 @@ export const updateMerchantServiceVoucher = async (req: Request, res: Response):
       .from('merchant_service_voucher')
       .update({
         ...updateData,
+        updated_by: (req as any).user?.user_id,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -145,6 +172,7 @@ export const updateMerchantServiceVoucher = async (req: Request, res: Response):
       data: data[0],
     });
   } catch (err) {
+    await logControllerError(req, err, 'MerchantServiceVoucherController', 'updateMerchantServiceVoucher');
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

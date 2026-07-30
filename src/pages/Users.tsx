@@ -1,13 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { 
@@ -22,9 +30,14 @@ import { UserPlus, Loader2, Mail, Phone, User as UserIcon, Lock, Building2, Shie
 import {getAuthHeader} from "@/utils/common";
 import { API_URL } from "@/config";
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
 const Users = () => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [jumpToPage, setJumpToPage] = useState("");
   const [formData, setFormData] = useState({
     user_fname: '',
     user_mname: '',
@@ -39,18 +52,50 @@ const Users = () => {
     update_by: '1'
   });
 
-  // Fetch Users
-  const { data: users, isLoading: isLoadingUsers } = useQuery({
-    queryKey: ['users'],
+  // Fetch Users (server-side paginated)
+  const { data: usersResponse, isLoading: isLoadingUsers, isFetching: isFetchingUsers } = useQuery({
+    queryKey: ['users', page, pageSize],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/users`, {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      const res = await fetch(`${API_URL}/users?${params.toString()}`, {
         headers: { ...getAuthHeader() }
       });
       if (!res.ok) throw new Error('Failed to fetch users');
-      const json = await res.json();
-      return json.data;
-    }
+      return res.json();
+    },
+    placeholderData: keepPreviousData,
   });
+
+  const users = usersResponse?.data ?? [];
+  const pagination = usersResponse?.pagination ?? { page: 1, pageSize, total: 0, totalPages: 1 };
+
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setPage(1);
+  };
+
+  const handleJumpToPage = () => {
+    const target = parseInt(jumpToPage, 10);
+    if (!Number.isNaN(target) && target >= 1 && target <= pagination.totalPages) {
+      setPage(target);
+    }
+    setJumpToPage("");
+  };
+
+  // Compute a small window of page numbers to display (max 4 visible)
+  const getPageNumbers = () => {
+    const totalPages = pagination.totalPages;
+    const windowSize = 4;
+    let start = Math.max(1, page - Math.floor(windowSize / 2));
+    const end = Math.min(totalPages, start + windowSize - 1);
+    start = Math.max(1, end - windowSize + 1);
+    const pages = [];
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
 
   // Fetch User Types
   const { data: userTypes, isLoading: isLoadingTypes } = useQuery({
@@ -367,13 +412,18 @@ const Users = () => {
               <CardHeader>
                 <CardTitle>User Directory</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {isLoadingUsers ? (
                   <div className="flex justify-center py-20">
                     <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
                   </div>
                 ) : (
-                  <div className="rounded-xl border overflow-hidden">
+                  <div className="rounded-xl border overflow-hidden relative m-6">
+                    {isFetchingUsers && (
+                      <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+                        <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+                      </div>
+                    )}
                     <Table>
                       <TableHeader className="bg-slate-50">
                         <TableRow>
@@ -446,6 +496,89 @@ const Users = () => {
                   </div>
                 )}
               </CardContent>
+
+              {!isLoadingUsers && (
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t bg-white px-6 py-4">
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <span>Rows per page</span>
+                    <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                      <SelectTrigger className="w-[80px] h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAGE_SIZE_OPTIONS.map((size) => (
+                          <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="ml-2">
+                      {pagination.total === 0
+                        ? '0 results'
+                        : `${(pagination.page - 1) * pagination.pageSize + 1}-${Math.min(pagination.page * pagination.pageSize, pagination.total)} of ${pagination.total}`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <Pagination className="mx-0 w-auto">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (page > 1) setPage(page - 1);
+                            }}
+                            className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
+                          />
+                        </PaginationItem>
+                        {getPageNumbers().map((p) => (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              href="#"
+                              isActive={p === page}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setPage(p);
+                              }}
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (page < pagination.totalPages) setPage(page + 1);
+                            }}
+                            className={page >= pagination.totalPages ? 'pointer-events-none opacity-50' : ''}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-slate-500 whitespace-nowrap">Go to</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={pagination.totalPages}
+                        value={jumpToPage}
+                        onChange={(e) => setJumpToPage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleJumpToPage();
+                        }}
+                        className="w-16 h-9"
+                        placeholder={String(page)}
+                      />
+                      <Button variant="outline" size="sm" className="h-9" onClick={handleJumpToPage}>
+                        Go
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </Card>
           </div>
         </div>
